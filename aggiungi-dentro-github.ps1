@@ -3,6 +3,15 @@ param (
     [string]$Messaggio = "Backup automatico dell'infrastruttura (Automated Commit)"
 )
 
+# Recupera dinamicamente l'URL di GitHub impostato per QUESTA specifica cartella
+$RepoDestinazione = git remote get-url origin
+
+Write-Host "==========================================================" -ForegroundColor Yellow
+Write-Host " STAI PER SPEDIRE I FILE NELLA SEGUENTE REPOSITORY:" -ForegroundColor Yellow
+Write-Host " $RepoDestinazione" -ForegroundColor White
+Write-Host "==========================================================" -ForegroundColor Yellow
+Write-Host ""
+
 Write-Host "1. Preparazione dei file in corso..." -ForegroundColor Cyan
 git add .
 
