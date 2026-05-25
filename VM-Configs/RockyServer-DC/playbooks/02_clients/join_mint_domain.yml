@@ -3,11 +3,11 @@
   hosts: mint_clients
   become: yes
   vars:
-    domain: "hcro01.lan"
-    realm: "HCRO01.LAN"
-    ipa_server: "hcrocky.hcro01.lan"
-    ipa_admin_pass: "password"
-    client_fqdn: "mint-desktop.hcro01.lan"
+    domain: "<DOMINIO_AZIENDALE>"
+    realm: "<REALM_KERBEROS_MAIUSCOLO>"
+    ipa_server: "server-master.<DOMINIO_AZIENDALE>"
+    ipa_admin_pass: "<PASSWORD_ADMIN_IPA_OSCURATA>"
+    client_fqdn: "client-mint.<DOMINIO_AZIENDALE>"
   tasks:
     - name: 1. Assicurati che il DNS punti al server Rocky (FreeIPA)
       ansible.builtin.lineinfile:
