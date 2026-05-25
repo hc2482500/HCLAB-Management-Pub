@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homelab Gateway</title>
+    <link rel="icon" type="image/png" href="homelab-gears-favicon.png?v=3">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient-top: #16a34a; 
+            --bg-gradient-bottom: #14532d; 
+            --card-bg: rgba(21, 128, 61, 0.35); 
+            --card-border: rgba(220, 252, 231, 0.3); 
+            --text-main: #ffffff;
+            --text-muted: #dcfce7; 
+            --accent-color: #ffffff;
+        }
+
+        body { margin: 0; font-family: 'Inter', sans-serif; background: linear-gradient(135deg, var(--bg-gradient-top) 0%, var(--bg-gradient-bottom) 100%); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; box-sizing: border-box; background-attachment: fixed; }
+
+        .top-bar { text-align: center; margin-bottom: 40px; width: 100%; max-width: 1200px; }
+        .clock-weather { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;}
+        .pill-widget { font-size: 1.2rem; font-weight: 600; background: rgba(0,0,0,0.15); padding: 10px 30px; border-radius: 30px; border: 1px solid var(--card-border); backdrop-filter: blur(5px); }
+        .header-title h1 { font-size: 3.8rem; margin: 0 0 10px 0; font-weight: 800; background: linear-gradient(to right, #ffffff, #dcfce7); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
+        .header-title p { color: var(--text-muted); font-size: 1.3rem; margin: 0; }
+
+        .hardware-dashboard { width: 100%; max-width: 1200px; margin-bottom: 50px; }
+        .hardware-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 20px; }
+        @media (max-width: 900px) { .hardware-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 500px) { .hardware-grid { grid-template-columns: 1fr; } }
+        .hw-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 15px; padding: 25px; backdrop-filter: blur(10px); display: flex; flex-direction: column; justify-content: center; }
+        .hw-label { color: var(--text-muted); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: flex; justify-content: space-between; }
+        .hw-value { font-size: 1.8rem; font-weight: 800; color: #ffffff; }
+        .progress-bg { background: rgba(0, 0, 0, 0.2); border-radius: 10px; height: 10px; width: 100%; margin-top: 15px; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; background: #ffffff; transition: width 1s ease-in-out; }
+        .net-uptime-bar { display: flex; justify-content: space-around; background: rgba(0, 0, 0, 0.15); border-radius: 15px; padding: 20px; font-size: 1.1rem; font-weight: 600; border: 1px solid rgba(255, 255, 255, 0.05); }
+
+        .search-box { width: 100%; max-width: 500px; position: relative; margin: 0 auto 30px auto; }
+        .search-box input { width: 100%; padding: 18px 25px 18px 50px; border-radius: 30px; border: 1px solid var(--card-border); background: rgba(0,0,0,0.2); color: white; font-size: 1.1rem; outline: none; box-sizing: border-box; }
+        .search-box input::placeholder { color: var(--text-muted); }
+        .search-box input:focus { background: rgba(0,0,0,0.3); border-color: var(--accent-color); box-shadow: 0 0 20px rgba(255,255,255,0.2); }
+        .search-icon { position: absolute; left: 20px; top: 50%; transform: translateY(-50%); font-size: 1.4rem; opacity: 0.7; }
+
+        .services-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; width: 100%; max-width: 1200px; margin-bottom: 60px; }
+        .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px; padding: 20px; text-decoration: none; color: var(--text-main); transition: all 0.3s ease; backdrop-filter: blur(10px); display: flex; align-items: center; gap: 15px; }
+        .card:hover { transform: translateY(-5px); border-color: var(--accent-color); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); background: rgba(255, 255, 255, 0.1); }
+        .icon { font-size: 2.5rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); min-width: 50px; text-align: center; }
+        .card-content { display: flex; flex-direction: column; }
+        .title { font-size: 1.2rem; font-weight: 700; margin-bottom: 5px; }
+        .desc { font-size: 0.9rem; color: var(--text-muted); margin: 0; line-height: 1.4; }
+        .hidden { display: none !important; }
+
+        .country-panel { width: 100%; max-width: 1000px; background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 25px; padding: 40px; display: flex; flex-direction: column; align-items: center; text-align: center; backdrop-filter: blur(15px); box-shadow: 0 20px 40px rgba(0,0,0,0.3); margin-bottom: 30px; }
+        .cp-header { color: var(--text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 25px; font-weight: 600;}
+        .cp-flag-img { width: 160px; height: auto; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); margin-bottom: 20px; display: none; }
+        .cp-loading-icon { font-size: 5rem; margin-bottom: 15px; }
+        .cp-name { font-size: 3rem; font-weight: 800; margin-bottom: 25px; color: #ffffff; text-shadow: 0 2px 10px rgba(0,0,0,0.2);}
+        .cp-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; width: 100%; max-width: 600px; background: rgba(255, 255, 255, 0.05); padding: 25px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05); }
+        .cp-stat { display: flex; flex-direction: column; gap: 5px; }
+        .cp-stat-label { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+        .cp-stat-value { font-size: 1.5rem; font-weight: 700; color: #bbf7d0; }
+
+        .news-panel { width: 100%; max-width: 1000px; background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 25px; padding: 40px; display: flex; flex-direction: column; backdrop-filter: blur(15px); box-shadow: 0 20px 40px rgba(0,0,0,0.3); margin-bottom: 30px; box-sizing: border-box; }
+        .news-header { display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;}
+        .news-header h2 { margin: 0 0 8px 0; font-size: 1.6rem; font-weight: 800; color: #ffffff;}
+        .news-subtitle { color: var(--text-muted); font-size: 0.95rem; }
+        .news-list { display: flex; flex-direction: column; gap: 15px; }
+        .news-item { background: rgba(255,255,255,0.05); padding: 15px 20px; border-radius: 12px; border-left: 4px solid var(--text-muted); transition: all 0.2s ease; display: block; text-decoration: none; color: #ffffff;}
+        .news-item:hover { background: rgba(255,255,255,0.1); border-left-color: #ffffff; transform: translateX(5px); }
+        .news-title { font-size: 1.1rem; font-weight: 600; line-height: 1.4; }
+        
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <div class="clock-weather">
+            <div class="pill-widget" id="live-clock">Caricamento orario...</div>
+        </div>
+        <div class="header-title">
+            <h1 id="greeting">Homelab Gateway</h1>
+            <p>Centrale di Comando hcdebian</p>
+        </div>
+    </div>
+
+    <div class="hardware-dashboard">
+        <div class="hardware-grid">
+            <div class="hw-card"><div class="hw-label"><span>🧠 RAM Libera</span></div><div class="hw-value" id="ram-val">...</div><div class="progress-bg"><div id="ram-bar" class="progress-fill"></div></div></div>
+            <div class="hw-card"><div class="hw-label"><span>💾 Disco Libero</span></div><div class="hw-value" id="disk-val">...</div><div class="progress-bg"><div id="disk-bar" class="progress-fill"></div></div></div>
+            <div class="hw-card"><div class="hw-label"><span>⚡ Carico CPU</span></div><div class="hw-value" id="cpu-val">...</div><div class="progress-bg"><div id="cpu-bar" class="progress-fill"></div></div></div>
+            <div class="hw-card"><div class="hw-label"><span>🌡️ Temp. CPU</span></div><div class="hw-value" id="temp-val">...</div><div class="progress-bg"><div id="temp-bar" class="progress-fill"></div></div></div>
+        </div>
+        <div class="net-uptime-bar">
+            <div>🌐 <span style="color: #bbf7d0;" id="net-down">↓ 0 B/s</span> &nbsp;|&nbsp; <span style="color: #bfdbfe;" id="net-up">↑ 0 B/s</span></div>
+            <div>⏱️ Uptime: <span id="uptime">...</span></div>
+        </div>
+    </div>
+
+    <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Cerca un servizio...">
+    </div>
+
+    <div class="services-grid" id="servicesGrid">
+        <a href="http://portainer.homelab.local" class="card" target="_blank" data-name="portainer gestione docker"><div class="icon">🐳</div><div class="card-content"><div class="title">Portainer</div><div class="desc">Gestione Container Docker</div></div></a>
+        <a href="http://uptimekuma.homelab.local" class="card" target="_blank" data-name="uptime kuma stato servizi monitoraggio"><div class="icon">💓</div><div class="card-content"><div class="title">Uptime Kuma</div><div class="desc">Stato dei Servizi</div></div></a>
+        <a href="http://grafana.homelab.local" class="card" target="_blank" data-name="grafana cruscotto metriche monitoraggio"><div class="icon">📈</div><div class="card-content"><div class="title">Grafana</div><div class="desc">Cruscotto Metriche</div></div></a>
+        <a href="http://prometheus.homelab.local" class="card" target="_blank" data-name="prometheus database sensori backend"><div class="icon">🗄️</div><div class="card-content"><div class="title">Prometheus</div><div class="desc">Database Sensori</div></div></a>
+        <a href="http://hc0api.homelab.local" class="card" target="_blank" data-name="monitor di sistema api hc0api backend stato"><div class="icon">⚙️</div><div class="card-content"><div class="title">API Backend</div><div class="desc">Stato dei Microservizi</div></div></a>
+        <a href="http://aichat.homelab.local" class="card" target="_blank" data-name="intelligenza artificiale ai open webui gemma"><div class="icon">🧠</div><div class="card-content"><div class="title">Open WebUI</div><div class="desc">Intelligenza Artificiale</div></div></a>
+        <a href="http://vaultwarden.homelab.local" class="card" target="_blank" data-name="vaultwarden gestore password sicurezza"><div class="icon">🔐</div><div class="card-content"><div class="title">Vaultwarden</div><div class="desc">Gestore Password</div></div></a>
+        <a href="http://it-tools.homelab.local" class="card" target="_blank" data-name="it tools utility sviluppatori"><div class="icon">🛠️</div><div class="card-content"><div class="title">IT Tools</div><div class="desc">Utility per sviluppatori</div></div></a>
+        <a href="http://stirlingpdf.homelab.local" class="card" target="_blank" data-name="stirling pdf gestione documenti office"><div class="icon">📄</div><div class="card-content"><div class="title">Stirling PDF</div><div class="desc">Gestione PDF Privata</div></div></a>
+        <a href="http://filebrowser.homelab.local" class="card" target="_blank" data-name="file browser gestione file"><div class="icon">📁</div><div class="card-content"><div class="title">File Browser</div><div class="desc">Gestione File</div></div></a>
+        <a href="http://odoo.homelab.local" class="card" target="_blank" data-name="odoo erp test gestionale fatturazione business"><div class="icon">🏢</div><div class="card-content"><div class="title">Odoo ERP</div><div class="desc">Test Gestionale e Fatturazione</div></div></a>
+    </div>
+
+    <div class="country-panel" id="country-widget">
+        <div class="cp-header">🌍 Esplorazione del Mondo 🌍</div>
+        <div id="country-loading" class="cp-loading-icon">⏳</div>
+        <img id="country-flag-img" class="cp-flag-img" src="" alt="Bandiera Nazione">
+        <div class="cp-name" id="country-name">Contattando l'API...</div>
+        <div class="cp-stats-grid">
+            <div class="cp-stat">
+                <span class="cp-stat-label">Popolazione</span>
+                <span class="cp-stat-value" id="country-pop">...</span>
+            </div>
+            <div class="cp-stat">
+                <span class="cp-stat-label">Capitale</span>
+                <span class="cp-stat-value" id="country-cap">...</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="news-panel" id="news-widget">
+        <div class="news-header">
+            <h2>📰 World News</h2>
+            <div class="news-subtitle"><span id="news-date"></span> &nbsp;|&nbsp; Ultime da BBC, NYT e WaPo</div>
+        </div>
+        <div class="news-list" id="news-container">
+            <div style="color: #dcfce7; text-align: center; padding: 20px;">Caricamento notizie...</div>
+        </div>
+    </div>
+
+    <div class="news-panel" id="tech-widget">
+        <div class="news-header">
+            <h2>🔬 Scienza & Tech</h2>
+            <div class="news-subtitle"><span id="tech-date"></span> &nbsp;|&nbsp; Da SciAm, Phys.org e Ars Technica</div>
+        </div>
+        <div class="news-list" id="tech-container">
+            <div style="color: #dcfce7; text-align: center; padding: 20px;">Caricamento notizie tech...</div>
+        </div>
+    </div>
+
+    <script>
+        function formatBytes(bytes) {
+            if (bytes === 0 || !bytes || isNaN(bytes)) return '0 B/s';
+            const k = 1024;
+            const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            let dateString = now.toLocaleDateString('it-IT', dateOptions);
+            dateString = dateString.charAt(0).toUpperCase() + dateString.slice(1);
+            document.getElementById('live-clock').innerText = dateString + " - " + timeString;
+            document.getElementById('news-date').innerText = dateString;
+            document.getElementById('tech-date').innerText = dateString; 
+
+            const hour = now.getHours();
+            let greeting = "Buonasera, Hc!";
+            if (hour >= 5 && hour < 12) greeting = "Buongiorno, Hc!";
+            else if (hour >= 12 && hour < 18) greeting = "Buon pomeriggio, Hc!";
+            document.getElementById('greeting').innerText = greeting;
+        }
+        setInterval(updateTime, 1000);
+
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(card => {
+                const keywords = card.getAttribute('data-name');
+                if (keywords.includes(searchTerm)) card.classList.remove('hidden');
+                else card.classList.add('hidden');
+            });
+        });
+
+        function updateProgress(id, free, total, unit) {
+            const perc = ((total - free) / total) * 100;
+            document.getElementById(id + '-val').innerText = free + ' / ' + total + unit;
+            document.getElementById(id + '-bar').style.width = perc + '%';
+            document.getElementById(id + '-bar').style.background = perc > 85 ? '#fca5a5' : '#ffffff';
+        }
+
+        async function fetchGatewayStats() {
+            try {
+                const response = await fetch('https://hc0api.homelab.local/status');
+                const d = await response.json();
+                
+                updateProgress('ram', d.resources.free_ram_gb, d.resources.total_ram_gb, ' GB');
+                updateProgress('disk', d.resources.free_disk_gb, d.resources.total_disk_gb, ' GB');
+                document.getElementById('cpu-val').innerText = d.resources.cpu_usage_pct + '%';
+                document.getElementById('cpu-bar').style.width = d.resources.cpu_usage_pct + '%';
+                document.getElementById('cpu-bar').style.background = d.resources.cpu_usage_pct > 85 ? '#fca5a5' : '#ffffff';
+                document.getElementById('temp-val').innerText = d.resources.temp_cpu + '°C';
+                document.getElementById('temp-bar').style.width = Math.min((d.resources.temp_cpu/100)*100, 100) + '%';
+                document.getElementById('temp-bar').style.background = d.resources.temp_cpu > 70 ? '#fca5a5' : '#ffffff';
+
+                document.getElementById('net-down').innerText = '↓ ' + formatBytes(d.resources.net_down_bytes);
+                document.getElementById('net-up').innerText = '↑ ' + formatBytes(d.resources.net_up_bytes);
+                
+                document.getElementById('uptime').innerText = d.resources.uptime;
+                
+                const country = d.resources.country;
+                if (country) {
+                    document.getElementById('country-loading').style.display = 'none';
+                    const flagImg = document.getElementById('country-flag-img');
+                    flagImg.src = country.flag_url;
+                    flagImg.style.display = 'block';
+                    document.getElementById('country-name').innerText = country.name;
+                    document.getElementById('country-pop').innerText = country.pop;
+                    document.getElementById('country-cap').innerText = country.capital;
+                }
+
+                const news = d.resources.news;
+                if (news && news.length > 0) {
+                    const container = document.getElementById('news-container');
+                    container.innerHTML = '';
+                    news.forEach(item => {
+                        const link = document.createElement('a');
+                        link.href = item.link;
+                        link.target = "_blank";
+                        link.className = "news-item";
+                        link.innerHTML = `<div class="news-title"><span style="color: #34d399; font-weight: 800; font-size: 0.9rem; margin-right: 5px;">[${item.source}]</span> ${item.title}</div>`;
+                        container.appendChild(link);
+                    });
+                }
+
+                const tech = d.resources.tech_news;
+                if (tech && tech.length > 0) {
+                    const container = document.getElementById('tech-container');
+                    container.innerHTML = '';
+                    tech.forEach(item => {
+                        const link = document.createElement('a');
+                        link.href = item.link;
+                        link.target = "_blank";
+                        link.className = "news-item";
+                        link.innerHTML = `<div class="news-title"><span style="color: #60a5fa; font-weight: 800; font-size: 0.9rem; margin-right: 5px;">[${item.source}]</span> ${item.title}</div>`;
+                        container.appendChild(link);
+                    });
+                }
+            } catch (error) {
+                console.error("Errore Backend:", error);
+            }
+        }
+
+        window.onload = () => {
+            updateTime();
+            fetchGatewayStats(); 
+            setInterval(fetchGatewayStats, 3000); 
+        };
+    </script>
+</body>
+</html>

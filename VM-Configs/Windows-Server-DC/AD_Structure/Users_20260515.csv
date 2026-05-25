@@ -1,0 +1,7 @@
+﻿"Name","SamAccountName","Title","Enabled"
+"Administrator","Administrator",,"True"
+"Guest","Guest",,"False"
+"sshd","sshd",,"True"
+"krbtgt","krbtgt",,"False"
+"User Test 01","user.test01",,"True"
+"HC Admin 02","hcadmin02",,"True"

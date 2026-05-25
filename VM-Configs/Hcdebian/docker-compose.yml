@@ -1,0 +1,299 @@
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    restart: unless-stopped
+    logging: *default-logging
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - /home/hcdebian/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/pc_fisico.json
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+    logging: *default-logging
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    #network_mode: host
+    extra_hosts:                                   # <--- AGGIUNGI QUESTA RIGA
+      - "host.docker.internal:host-gateway"        # <--- E QUESTA RIGA
+    volumes:
+      - /home/hcdebian/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--storage.tsdb.retention.size=5GB'
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '1.0'
+    logging: *default-logging
+
+  #node-exporter:
+  #  image: quay.io/prometheus/node-exporter:latest
+  #  container_name: node-exporter
+  #  restart: unless-stopped
+  #  network_mode: host
+    #networks:
+    #  - homelab_net
+  #  pid: host
+  #  volumes:
+  #    - '/:/host:ro,rslave'
+  #    - '/proc:/host/proc:ro'    # <-- NUOVO: Diamo l'accesso ai processi di rete
+  #    - '/sys:/host/sys:ro'      # <-- NUOVO: Diamo l'accesso all'hardware
+  #  command:
+  #    - '--path.rootfs=/host'
+  #    - '--path.procfs=/host/proc' # <-- NUOVO: Diciamo a node-exporter di leggerli
+  #    - '--path.sysfs=/host/sys'   # <-- NUOVO
+  #  logging: *default-logging
+
+  homer:
+    image: b4bz/homer:latest
+    container_name: homer
+    volumes:
+      - /home/hcdebian/homer/assets:/www/assets # Punta alla cartella che contiene il tuo config.yml
+    restart: unless-stopped
+    logging: *default-logging
+
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /home/hcdebian/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - /home/hcdebian/mio-frontend:/usr/share/nginx/html:ro
+      - /home/hcdebian/nginx/certs:/etc/nginx/certs:ro
+      - /home/hcdebian/homer/assets/icons:/usr/share/nginx/html/icons:ro
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging: *default-logging
+    networks:
+      default:
+        aliases:
+          - homer.homelab.local
+          - grafana.homelab.local
+          - portainer.homelab.local
+          - prometheus.homelab.local
+          - it-tools.homelab.local
+          - stirlingpdf.homelab.local
+          - odoo.homelab.local
+          - vaultwarden.homelab.local
+          - aichat.homelab.local
+          - filebrowser.homelab.local
+          - hc0api.homelab.local
+          - homelab.local
+          - vaultwarden.homelab.local
+
+  hc0-api:
+    build: ./hc0-api
+    container_name: hc0-api
+    volumes:
+      - ./hc0-api:/app # Mantenuto locale perché è codice sorgente in sviluppo
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging: *default-logging
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - /home/hcdebian/loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging: *default-logging
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - /home/hcdebian/promtail/promtail-config.yaml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    restart: unless-stopped
+    logging: *default-logging
+  
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=5m
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    restart: unless-stopped
+    logging: *default-logging
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    volumes:
+      - openwebui_data:/app/backend/data
+    ports:
+      - "3000:8080"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+    depends_on:
+      - ollama
+    restart: unless-stopped
+    logging: *default-logging
+  
+  odoo:
+    image: odoo:16.0
+    container_name: odoo
+    depends_on:
+      - odoo_db
+    environment:
+      - HOST=odoo_db
+      - USER=odoo
+      - PASSWORD=odoo
+    restart: unless-stopped
+    logging: *default-logging
+    volumes:
+      - odoo_web_data:/var/lib/odoo
+
+  odoo_db:
+    image: postgres:15
+    container_name: odoo_db
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=odoo
+      - POSTGRES_USER=odoo
+    restart: unless-stopped
+    logging: *default-logging
+    volumes:
+      - odoo_db_data:/var/lib/postgresql/data
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: unless-stopped
+    volumes:
+      - uptime_kuma_data:/app/data
+    ports:
+      - "3001:3001"
+    environment:
+      - UPTIME_KUMA_PORT=3001
+    logging: *default-logging
+  
+  filebrowser:
+    image: filebrowser/filebrowser:latest
+    container_name: filebrowser
+    restart: unless-stopped
+    ports:
+      - "8082:80"
+    environment:
+      - FB_DATABASE=/database/filebrowser.db
+    volumes:
+      - /home/hcdebian:/srv
+      - filebrowser_data:/database
+      - filebrowser_config:/config
+    logging: *default-logging
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=86400
+      - WATCHTOWER_INCLUDE_STOPPED=false
+    logging: *default-logging
+
+  stirling-pdf:
+    image: frooodle/s-pdf:latest
+    container_name: stirling-pdf
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - DOCKER_ENABLE_SECURITY=true
+      - INSTALL_BOOK_AND_ADVANCED_HTML_OPS=false
+      - LANGS=it_IT
+      - JAVA_TOOL_OPTIONS="-Xmx512m"
+    volumes:
+      - stirling_pdf_training:/usr/share/tessdata # TRASFORMATO IN NAMED VOLUME
+      - stirling_pdf_configs:/configs             # TRASFORMATO IN NAMED VOLUME
+    logging: *default-logging
+  
+  it-tools:
+    image: corentinth/it-tools:latest
+    container_name: it-tools
+    restart: unless-stopped
+    # Non servono volumi qui!
+    ports:
+      - "8081:80" 
+    logging: *default-logging
+  
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    environment:
+      - SIGNUPS_ALLOWED=false  # Imposta a false dopo aver creato il tuo account per sicurezza
+    volumes:
+      - vaultwarden_data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 256M # Vaultwarden è incredibilmente efficiente
+    logging: *default-logging
+    
+volumes:
+  portainer_data:
+  grafana_data:
+  prometheus_data:
+  loki_data:
+  ollama_data:
+  openwebui_data:
+  odoo_web_data:
+  odoo_db_data:
+  uptime_kuma_data:
+  filebrowser_data:
+  filebrowser_config:
+  stirling_pdf_training: # AGGIUNTO
+  stirling_pdf_configs:  # AGGIUNTO
+  vaultwarden_data:

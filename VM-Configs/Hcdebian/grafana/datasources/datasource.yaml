@@ -1,0 +1,9 @@
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090  # Mantieni l'IP come preferisci
+    isDefault: true
+    uid: afgdf7yoenjeod              # <--- QUESTO DEVE ESSERE IDENTICO AL DASHBOARD
+    editable: true

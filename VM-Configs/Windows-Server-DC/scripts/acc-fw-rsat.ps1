@@ -1,0 +1,1 @@
+Get-NetFirewallRule -DisplayGroup "*Remote Administration*" | Enable-NetFirewallRule

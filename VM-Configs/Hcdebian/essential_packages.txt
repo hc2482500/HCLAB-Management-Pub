@@ -1,0 +1,39 @@
+# Docker & Containerization
+docker-ce
+docker-ce-cli
+containerd.io
+docker-compose-plugin
+docker-buildx-plugin
+
+# Networking & Remote Access
+openssh-server
+ufw
+fail2ban
+curl
+wget
+git
+iproute2
+iputils-ping
+traceroute
+bind9-dnsutils
+netcat-traditional
+
+# System Tools
+sudo
+jq
+nano
+vim-common
+unzip
+zip
+htop
+ca-certificates
+gnupg
+
+# Monitoring
+prometheus-node-exporter
+vnstat
+speedtest-cli
+
+# Virtualization
+open-vm-tools
+intel-microcode

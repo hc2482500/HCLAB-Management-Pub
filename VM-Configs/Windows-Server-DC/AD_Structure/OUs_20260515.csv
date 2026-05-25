@@ -1,0 +1,5 @@
+﻿"Name","DistinguishedName"
+"Domain Controllers","OU=Domain Controllers,DC=hclab02,DC=local"
+"OU_Utenti","OU=OU_Utenti,DC=hclab02,DC=local"
+"OU_Computer","OU=OU_Computer,DC=hclab02,DC=local"
+"OU_Admins","OU=OU_Admins,DC=hclab02,DC=local"
