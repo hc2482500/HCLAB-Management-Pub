@@ -1,0 +1,29 @@
+---
+- name: Bypass Bug GTK - Installazione SDDM (Qt)
+  hosts: ubuntu_clients
+  become: yes
+  tasks:
+    - name: 1. Polverizza tutti i Display Manager GTK
+      ansible.builtin.apt:
+        name: ['lightdm', 'lightdm-gtk-greeter', 'gdm3', 'slick-greeter']
+        state: absent
+        purge: yes
+
+    - name: 2. Installa SDDM (Display Manager basato su Qt)
+      ansible.builtin.apt:
+        name: sddm
+        state: present
+        update_cache: yes
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: 3. Imposta SDDM come gestore predefinito di sistema
+      ansible.builtin.copy:
+        dest: /etc/X11/default-display-manager
+        content: "/usr/sbin/sddm\n"
+        mode: '0644'
+
+    - name: 4. Riavvio per l'applicazione del nuovo motore
+      ansible.builtin.reboot:
+        msg: "Applicazione SDDM in corso..."
+        reboot_timeout: 300

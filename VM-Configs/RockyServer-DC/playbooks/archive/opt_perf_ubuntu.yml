@@ -1,0 +1,22 @@
+---
+- name: Ottimizzazione Performance del Sistema (OS Tuning Client)
+  hosts: clients
+  become: yes
+  tasks:
+    - name: 1. Ferma e disabilita servizi di sistema inutili (Modem, Firmware, Crash Reporter)
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      loop:
+        - ModemManager.service
+        - fwupd.service
+        - whoopsie.service
+      ignore_errors: yes
+
+    - name: 2. Ottimizza l'uso della memoria (Riduci Swappiness per evitare lag su disco)
+      ansible.posix.sysctl:
+        name: vm.swappiness
+        value: '10'
+        state: present
+        reload: yes

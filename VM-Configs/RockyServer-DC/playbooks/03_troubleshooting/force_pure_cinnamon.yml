@@ -1,0 +1,64 @@
+---
+- name: Sradicamento GNOME e Installazione Cinnamon Puro (Ubuntu 26.04)
+  hosts: ubuntu_clients
+  become: yes
+  tasks:
+    # 1. Pulizia Totale dei Display Manager e componenti conflittuali
+    - name: 1. Rimuovi GDM3, componenti GNOME e Wayland
+      ansible.builtin.apt:
+        name:
+          - gdm3
+          - gnome-shell
+          - ubuntu-session
+          - gnome-online-accounts
+          - wayland-protocols
+        state: absent
+        purge: yes
+
+    # 2. Installazione dell'ecosistema Cinnamon nativo
+    - name: 2. Installa LightDM, Slick-Greeter e Cinnamon Core
+      ansible.builtin.apt:
+        name:
+          - lightdm
+          - slick-greeter
+          - cinnamon-core
+          - xserver-xorg-core
+          - xinit
+        state: present
+        update_cache: yes
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    # 3. Configurazione rigorosa di LightDM e Slick-Greeter per X11
+    - name: 3. Forza LightDM come Display Manager
+      ansible.builtin.copy:
+        dest: /etc/X11/default-display-manager
+        content: "/usr/sbin/lightdm\n"
+        mode: '0644'
+
+    - name: 4. Configura Slick-Greeter (Tema compatibile e no A11y)
+      ansible.builtin.copy:
+        dest: /etc/lightdm/slick-greeter.conf
+        content: |
+          [Greeter]
+          background=#2c3e50
+          theme-name=Adwaita
+          icon-theme-name=Adwaita
+          draw-user-backgrounds=false
+          show-hostname=true
+          show-a11y=false
+          show-keyboard=false
+        mode: '0644'
+
+    # 4. Pulizia cache e riavvio forzato
+    - name: 5. Pulisci la cache grafica corrotta degli utenti
+      ansible.builtin.shell: |
+        rm -rf /home/*/.config/dconf/user
+        rm -rf /home/*/.cinnamon/
+        rm -rf /home/*/.Xauthority
+      ignore_errors: yes
+
+    - name: 6. Riavvio di Sistema per applicare l'ambiente puro
+      ansible.builtin.reboot:
+        msg: "Applicazione ambiente Cinnamon puro in corso..."
+        reboot_timeout: 300

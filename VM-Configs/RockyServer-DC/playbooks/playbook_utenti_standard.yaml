@@ -1,0 +1,55 @@
+---
+- name: "Playbook: Configurazione Ambiente Utenti Standard"
+  hosts: clients
+  become: yes
+
+  vars:
+    target_user: "utest01"
+    user_home: "/home/{{ target_user }}"
+
+  tasks:
+    - name: "1. Forza creazione Home directory"
+      file:
+        path: "{{ user_home }}"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0750'
+
+    - name: "2. Inizializza .bashrc dallo scheletro di sistema"
+      copy:
+        src: /etc/skel/.bashrc
+        dest: "{{ user_home }}/.bashrc"
+        remote_src: yes
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0644'
+        force: no # Non sovrascrive se l'utente lo ha già modificato
+
+    - name: "3. Forza creazione cartella Desktop"
+      file:
+        path: "{{ user_home }}/Desktop"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+
+    - name: "4. User Policy: Scrittura file INFO_AZIENDA.txt"
+      copy:
+        dest: "{{ user_home }}/Desktop/INFO_AZIENDA.txt"
+        content: |
+          ************************************************************
+          Benvenuto nel dominio HCRO01.
+          Il tuo account è un profilo 'Standard'.
+          Per assistenza contatta hcrockyadmin@hcro01.lan
+          ************************************************************
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0644'
+
+    - name: "5. User Policy: Impostazione Alias helpme"
+      lineinfile:
+        path: "{{ user_home }}/.bashrc"
+        line: "alias helpme='cat ~/Desktop/INFO_AZIENDA.txt'"
+        state: present
+        create: yes # Crea il file se per qualche motivo mancasse ancora

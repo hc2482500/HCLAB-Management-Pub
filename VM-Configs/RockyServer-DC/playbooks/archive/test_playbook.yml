@@ -1,0 +1,19 @@
+---
+- name: Test Automazione (Sostituzione Playbook)
+  hosts: clients
+  become: yes
+
+  tasks:
+    - name: "Playbook: Creazione cartella Documenti Aziendali sul Desktop"
+      file:
+        path: /home/hcrockyadmin/Desktop/Documenti_Aziendali
+        state: directory
+        mode: '0755'
+        owner: hcrockyadmin
+        group: hcrockyadmin
+
+    - name: "Playbook: Installazione pacchetto fastfetch"
+      apt:
+        name: fastfetch
+        state: present
+        update_cache: yes

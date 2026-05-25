@@ -1,0 +1,48 @@
+---
+- name: Configurazione Login Aziendale (Greeter) per Linux Mint
+  hosts: mint_clients
+  become: yes
+  tasks:
+    - name: 1. Installa il Greeter Enterprise (lightdm-gtk-greeter)
+      ansible.builtin.apt:
+        name: lightdm-gtk-greeter
+        state: present
+        update_cache: yes
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: 2. Rimuovi il Greeter domestico (slick-greeter)
+      ansible.builtin.apt:
+        name: 
+          - slick-greeter
+          - lightdm-settings
+        state: absent
+        purge: yes
+
+    - name: 3. Configura LightDM per usare il nuovo Greeter e permettere login manuale
+      ansible.builtin.copy:
+        dest: /etc/lightdm/lightdm.conf.d/99-enterprise.conf
+        content: |
+          [Seat:*]
+          greeter-session=lightdm-gtk-greeter
+          greeter-show-manual-login=true
+        mode: '0644'
+
+    - name: 4. Applica il tema scuro ed elegante (Mint-Y-Dark) al box di login
+      ansible.builtin.copy:
+        dest: /etc/lightdm/lightdm-gtk-greeter.conf
+        content: |
+          [greeter]
+          background = /usr/share/backgrounds/linuxmint/default_background.jpg
+          theme-name = Mint-Y-Dark
+          icon-theme-name = Mint-Y
+          font-name = Ubuntu 11
+          indicators = ~host;~spacer;~clock;~spacer;~session;~power
+        mode: '0644'
+      notify: Riavvia LightDM
+
+  handlers:
+    - name: Riavvia LightDM
+      ansible.builtin.systemd:
+        name: lightdm
+        state: restarted

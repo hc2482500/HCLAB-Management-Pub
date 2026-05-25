@@ -1,0 +1,76 @@
+---
+- name: Configurazione Desktop Remoto (XRDP) e Cinnamon su Ubuntu/Mint
+  hosts: clients
+  become: yes
+  tasks:
+    - name: 1. Installa XRDP e l'ambiente base Cinnamon
+      ansible.builtin.apt:
+        name:
+          - xrdp
+          - cinnamon-core
+        state: present
+        update_cache: yes
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: 2. Assicurati che l'utente xrdp sia nel gruppo dei certificati ssl
+      ansible.builtin.user:
+        name: xrdp
+        groups: ssl-cert
+        append: yes
+
+    - name: 3. Configura xrdp.ini per usare la porta 3389
+      ansible.builtin.lineinfile:
+        path: /etc/xrdp/xrdp.ini
+        regexp: '^port='
+        line: 'port=3389'
+      notify: Riavvia XRDP
+
+    - name: 4. [FIX XRDP] Crea il file .xsession globale per avviare Cinnamon
+      ansible.builtin.copy:
+        dest: /etc/skel/.xsession
+        content: |
+          cinnamon-session
+        mode: '0644'
+
+    - name: 5. [FIX XRDP] Applica .xsession agli utenti esistenti in /home
+      ansible.builtin.shell: |
+        for user_home in /home/*; do
+          if [ -d "$user_home" ]; then
+            echo "cinnamon-session" > "$user_home/.xsession"
+            chown $(basename $user_home):$(basename $user_home) "$user_home/.xsession"
+            chmod 644 "$user_home/.xsession"
+          fi
+        done
+      changed_when: true
+      ignore_errors: yes
+
+    - name: 6. [FIX XRDP] Configura startwm.sh per evitare i crash di D-Bus e GNOME
+      ansible.builtin.copy:
+        dest: /etc/xrdp/startwm.sh
+        content: |
+          #!/bin/sh
+          # Fix per l'ambiente D-Bus e le variabili di sessione su Ubuntu
+          if test -r /etc/profile; then
+            . /etc/profile
+          fi
+          
+          if test -r /etc/default/locale; then
+            . /etc/default/locale
+            export LANG LANGUAGE
+          fi
+          
+          export XDG_SESSION_DESKTOP=cinnamon
+          export XDG_CURRENT_DESKTOP=X-CINNAMON
+          export DESKTOP_SESSION=cinnamon
+
+          # Forza l'avvio della sessione Cinnamon
+          exec /usr/bin/cinnamon-session
+        mode: '0755'
+      notify: Riavvia XRDP
+
+  handlers:
+    - name: Riavvia XRDP
+      ansible.builtin.systemd:
+        name: xrdp
+        state: restarted

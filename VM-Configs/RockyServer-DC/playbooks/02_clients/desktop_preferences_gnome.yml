@@ -1,0 +1,104 @@
+---
+- name: Configurazione Preferenze Desktop e Certificati (Modalità Globale)
+  hosts: clients
+  become: yes
+  tasks:
+    - name: 1. Installa utility necessarie e Terminale GNOME Classico
+      ansible.builtin.apt:
+        name:
+          - libnss3-tools
+          - dconf-cli
+          - gnome-terminal   # <-- Aggiungi questa riga
+        state: present
+        update_cache: yes    # <-- E aggiungi questo per scaricarlo fresco
+
+    - name: 2. Aggiorna la cache dei file .desktop di sistema
+      ansible.builtin.command: update-desktop-database -q
+
+    # --- GESTIONE GNOME TIPO GPO (DCONF LOCKS) ---
+
+    - name: 3. Crea il profilo dconf aziendale per gli utenti
+      ansible.builtin.copy:
+        dest: /etc/dconf/profile/user
+        content: |
+          user-db:user
+          system-db:local
+        mode: '0644'
+
+    - name: 4. Crea la directory per i "lucchetti" delle policy (Locks)
+      ansible.builtin.file:
+        path: /etc/dconf/db/local.d/locks
+        state: directory
+        mode: '0755'
+
+    - name: 5. Definisci le impostazioni grafiche aziendali (Dock e Animazioni)
+      ansible.builtin.copy:
+        dest: /etc/dconf/db/local.d/00-enterprise-settings
+        content: |
+          [org/gnome/desktop/interface]
+          enable-animations=false
+
+          [org/gnome/shell]
+          favorite-apps=['brave-browser.desktop', 'firefox_firefox.desktop', 'thunderbird_thunderbird.desktop', 'org.gnome.Nautilus.desktop', 'gnome-terminal.desktop', 'org.gnome.Terminal.desktop', 'org.gnome.Console.desktop', 'kgx.desktop', 'gnome-system-monitor.desktop', 'org.gnome.Characters.desktop', 'org.gnome.TextEditor.desktop', 'gnome-control-center.desktop', 'org.gnome.Settings.desktop', 'ubuntu-cc.desktop', 'snap-store_ubuntu-software.desktop']
+        mode: '0644'
+      notify: Aggiorna dconf
+
+    - name: 6. Blocca le impostazioni per impedirne la modifica
+      ansible.builtin.copy:
+        dest: /etc/dconf/db/local.d/locks/00-enterprise-settings
+        content: |
+          /org/gnome/desktop/interface/enable-animations
+          /org/gnome/shell/favorite-apps
+        mode: '0644'
+      notify: Aggiorna dconf
+
+    # --- INIEZIONE CERTIFICATI DINAMICA ---
+
+    - name: 7. Copia la CA di FreeIPA nei certificati di sistema globali
+      ansible.builtin.copy:
+        src: /etc/ipa/ca.crt
+        dest: /usr/local/share/ca-certificates/freeipa.crt
+        remote_src: yes
+        mode: '0644'
+      register: system_cert
+
+    - name: 8. Aggiorna i certificati di sistema dell'OS
+      ansible.builtin.command: update-ca-certificates
+      when: system_cert.changed
+
+    - name: 9. Crea la directory delle policy Enterprise per Firefox
+      ansible.builtin.file:
+        path: /etc/firefox/policies
+        state: directory
+        mode: '0755'
+
+    - name: 10. Inietta la Policy dei Certificati in Firefox (Supporto nativo Snap)
+      ansible.builtin.copy:
+        dest: /etc/firefox/policies/policies.json
+        content: |
+          {
+            "policies": {
+              "Certificates": {
+                "ImportEnterpriseRoots": true,
+                "Install": ["/usr/local/share/ca-certificates/freeipa.crt"]
+              }
+            }
+          }
+        mode: '0644'
+
+    - name: 11. Inietta dinamicamente la CA in Brave per TUTTI gli utenti in /home
+      ansible.builtin.shell:
+        cmd: |
+          for user_home in /home/*; do
+              [ -d "$user_home" ] || continue
+              username=$(basename "$user_home")
+              mkdir -p "$user_home/.pki/nssdb"
+              certutil -d sql:"$user_home/.pki/nssdb" -A -t "C,," -n "FreeIPA CA" -i /usr/local/share/ca-certificates/freeipa.crt
+              chown -R "$username:$username" "$user_home/.pki" 2>/dev/null || true
+          done
+      changed_when: true
+      ignore_errors: yes
+
+  handlers:
+    - name: Aggiorna dconf
+      ansible.builtin.command: dconf update

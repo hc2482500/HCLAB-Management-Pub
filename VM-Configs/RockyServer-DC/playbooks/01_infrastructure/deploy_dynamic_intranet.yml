@@ -1,0 +1,141 @@
+---
+# ATTO 0: Trova il container e registralo in memoria
+- name: Pre-Setup - Connessione al Container
+  hosts: servers
+  become: yes
+  tasks:
+    - name: Registra il container in memoria
+      add_host:
+        name: web-server-aziendale
+        ansible_connection: lxd
+        ansible_user: root
+        ansible_remote_tmp: /tmp
+
+# ATTO 1: Deploy del sito PHP
+- name: Deploy Portale Intranet Dinamico (PHP + FreeIPA LDAP)
+  hosts: web-server-aziendale
+  become: yes
+  tasks:
+    - name: 1. Installa PHP e il modulo LDAP
+      ansible.builtin.apt:
+        name: 
+          - php-fpm
+          - php-ldap
+        state: present
+        update_cache: yes
+
+    - name: 2. Configura Nginx per leggere il PHP
+      ansible.builtin.copy:
+        dest: /etc/nginx/sites-available/default
+        content: |
+          server {
+              listen 80 default_server;
+              root /var/www/html;
+              index index.php index.html index.htm;
+              server_name _;
+              location / { try_files $uri $uri/ =404; }
+              location ~ \.php$ {
+                  include snippets/fastcgi-php.conf;
+                  fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+              }
+          }
+      notify: Riavvia Nginx
+
+    - name: 3. Rimuovi il vecchio file HTML statico
+      ansible.builtin.file:
+        path: /var/www/html/index.html
+        state: absent
+
+    - name: 4. Inietta l'App Intranet in PHP (RBAC)
+      ansible.builtin.copy:
+        dest: /var/www/html/index.php
+        content: |
+          <?php
+          session_start();
+          $error = '';
+          
+          if (isset($_GET['logout'])) { session_destroy(); header("Location: index.php"); exit; }
+
+          if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+              $user = $_POST['username'];
+              $pass = $_POST['password'];
+              $ldap_host = "ldap://ip-host"; 
+              $ldap_dn = "uid=$user,cn=users,cn=accounts,dc=hcro01,dc=lan"; 
+              
+              $conn = @ldap_connect($ldap_host);
+              ldap_set_option($conn, LDAP_OPT_PROTOCOL_VERSION, 3);
+              
+              if (@ldap_bind($conn, $ldap_dn, $pass)) {
+                  $_SESSION['user'] = $user;
+                  $search = @ldap_search($conn, "cn=groups,cn=accounts,dc=hcro01,dc=lan", "(&(cn=admins)(member=$ldap_dn))");
+                  $entries = @ldap_get_entries($conn, $search);
+                  $_SESSION['is_admin'] = ($entries['count'] > 0);
+                  header("Location: index.php"); exit;
+              } else {
+                  $error = "Credenziali non valide o utente non trovato.";
+              }
+          }
+          ?>
+          <!DOCTYPE html>
+          <html lang="it">
+          <head>
+              <meta charset="UTF-8"><title>HCRO01 - Intranet</title>
+              <style>
+                  body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #fff; margin: 0; }
+                  header { background: #1f1f1f; padding: 20px; display: flex; justify-content: space-between; border-bottom: 2px solid #00a8ff; }
+                  header h1 { margin: 0; color: #00a8ff; }
+                  .container { padding: 50px; text-align: center; }
+                  .login-box { background: #1f1f1f; padding: 30px; width: 300px; margin: 0 auto; border-radius: 8px; border-top: 4px solid #00a8ff; }
+                  input { width: 90%; padding: 10px; margin: 10px 0; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; }
+                  button { background: #00a8ff; color: #fff; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; }
+                  .features { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 40px; }
+                  .card { background: #1f1f1f; padding: 20px; border-radius: 8px; width: 250px; border-top: 4px solid #333; text-decoration: none; color: white; transition: 0.3s; }
+                  .card:hover { border-top-color: #00a8ff; transform: translateY(-5px); }
+                  .card-admin { border-top-color: #ff3366; }
+                  .card-admin:hover { border-top-color: #ff0044; }
+                  .error { color: #ff3366; }
+              </style>
+          </head>
+          <body>
+              <header><h1>HCRO01 LAB</h1>
+              <?php if(isset($_SESSION['user'])): ?>
+                  <div>Benvenuto, <b><?= $_SESSION['user'] ?></b> | <a href="?logout=1" style="color:#00a8ff;">Logout</a></div>
+              <?php endif; ?>
+              </header>
+              <div class="container">
+                  <?php if(!isset($_SESSION['user'])): ?>
+                      <div class="login-box">
+                          <h2>Accesso Intranet</h2>
+                          <?php if($error) echo "<p class='error'>$error</p>"; ?>
+                          <form method="POST">
+                              <input type="text" name="username" placeholder="Nome utente (es. utest01)" required>
+                              <input type="password" name="password" placeholder="Password" required>
+                              <button type="submit">Accedi</button>
+                          </form>
+                      </div>
+                  <?php else: ?>
+                      <h2>Dashboard dei Servizi</h2>
+                      <div class="features">
+                          <a href="https://vault.hcro01.lan" class="card">
+                              <h3>Vaultwarden</h3><p>Gestione Password (Accesso Globale)</p>
+                          </a>
+                          <?php if($_SESSION['is_admin']): ?>
+                              <a href="https://hcrocky.hcro01.lan" class="card card-admin">
+                                  <h3>FreeIPA Console</h3><p>Gestione Utenti (Solo Admin)</p>
+                              </a>
+                              <a href="#" class="card card-admin">
+                                  <h3>Ansible Tower</h3><p>Orchestrazione (Solo Admin)</p>
+                              </a>
+                          <?php endif; ?>
+                      </div>
+                  <?php endif; ?>
+              </div>
+          </body>
+          </html>
+        mode: '0644'
+
+  handlers:
+    - name: Riavvia Nginx
+      ansible.builtin.systemd:
+        name: nginx
+        state: restarted

@@ -1,0 +1,53 @@
+---
+- name: Join Linux Mint al Dominio FreeIPA
+  hosts: mint_clients
+  become: yes
+  vars:
+    domain: "hcro01.lan"
+    realm: "HCRO01.LAN"
+    ipa_server: "hcrocky.hcro01.lan"
+    ipa_admin_pass: "password"
+    client_fqdn: "mint-desktop.hcro01.lan"
+  tasks:
+    - name: 1. Assicurati che il DNS punti al server Rocky (FreeIPA)
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/resolved.conf
+        regexp: '^#?DNS='
+        line: 'DNS=ip-domain-controller'
+      notify: Riavvia systemd-resolved
+
+    - name: 2. Flush handlers per applicare subito il DNS
+      ansible.builtin.meta: flush_handlers
+
+    - name: 3. Imposta l'Hostname come FQDN (Richiesto da FreeIPA)
+      ansible.builtin.hostname:
+        name: "{{ client_fqdn }}"
+
+    - name: 4. Assicurati che l'FQDN sia nel file hosts locale
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: "127.0.1.1 {{ client_fqdn }} mint-desktop"
+        insertafter: '^127\.0\.0\.1'
+
+    - name: 5. Installa il pacchetto FreeIPA Client
+      ansible.builtin.apt:
+        name: freeipa-client
+        state: present
+        update_cache: yes
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: 6. Esegui il Join al Dominio (ignora se già unito)
+      ansible.builtin.command:
+        cmd: "ipa-client-install --hostname={{ client_fqdn }} --domain={{ domain }} --realm={{ realm }} --server={{ ipa_server }} --principal=admin --password={{ ipa_admin_pass }} --mkhomedir --unattended"
+      register: ipa_join
+      failed_when: 
+        - ipa_join.rc != 0
+        - "'Already configured' not in ipa_join.stderr"
+      changed_when: ipa_join.rc == 0
+
+  handlers:
+    - name: Riavvia systemd-resolved
+      ansible.builtin.systemd:
+        name: systemd-resolved
+        state: restarted

@@ -1,0 +1,28 @@
+---
+- name: Fix CSS e Freeze su Slick Greeter (Ubuntu 26.04)
+  hosts: ubuntu_clients
+  become: yes
+  tasks:
+    - name: Configura Slick Greeter con Arc-Dark e disabilita A11y
+      ansible.builtin.copy:
+        dest: /etc/lightdm/slick-greeter.conf
+        content: |
+          [Greeter]
+          background=#2c3e50
+          # Usiamo Arc-Dark perché Yaru rompe il CSS di slick-greeter
+          theme-name=Arc-Dark
+          icon-theme-name=Papirus-Dark
+          draw-user-backgrounds=false
+          show-hostname=true
+          # Spegniamo i moduli che freezano VMware
+          show-a11y=false
+          show-keyboard=false
+          enable-hidpi=auto
+        mode: '0644'
+      notify: Riavvia LightDM
+      
+  handlers:
+    - name: Riavvia LightDM
+      ansible.builtin.systemd:
+        name: lightdm
+        state: restarted

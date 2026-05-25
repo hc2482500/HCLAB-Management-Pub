@@ -1,0 +1,36 @@
+---
+- name: Ripristino GDM3 nativo e Fix Freeze Wayland (Ubuntu 26.04)
+  hosts: ubuntu_clients
+  become: yes
+  tasks:
+    - name: 1. Rimuovi completamente i greeter problematici e incompatibili
+      ansible.builtin.apt:
+        name:
+          - lightdm
+          - slick-greeter
+          - lightdm-gtk-greeter
+        state: absent
+        purge: yes
+
+    - name: 2. Assicurati che GDM3 sia installato e aggiornato
+      ansible.builtin.apt:
+        name: gdm3
+        state: present
+
+    - name: 3. Disabilita Wayland (Il colpevole dei freeze su macchine virtuali)
+      ansible.builtin.lineinfile:
+        path: /etc/gdm3/custom.conf
+        regexp: '^#?WaylandEnable='
+        line: 'WaylandEnable=false'
+
+    - name: 4. Imposta GDM3 come gestore grafico di default
+      ansible.builtin.copy:
+        dest: /etc/X11/default-display-manager
+        content: "/usr/sbin/gdm3\n"
+        mode: '0644'
+
+    - name: 5. Abilita e riavvia il servizio GDM3
+      ansible.builtin.systemd:
+        name: gdm3
+        enabled: yes
+        state: restarted

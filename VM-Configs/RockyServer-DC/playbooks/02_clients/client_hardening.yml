@@ -1,0 +1,25 @@
+---
+- name: Hardening Sicurezza Client Ubuntu
+  hosts: all
+  become: yes
+  tasks:
+    - name: Installa e abilita il firewall UFW
+      apt:
+        name: ufw
+        state: present
+
+    - name: Permetti traffico SSH e Samba (per il Lab)
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop: ['22', '445', '139']
+
+    - name: Abilita ufficialmente il Firewall
+      community.general.ufw:
+        state: enabled
+
+    - name: Imposta il messaggio legale (MOTD) aziendale
+      copy:
+        content: "PROPRIETA' DI HCRO01. Accesso autorizzato ai soli dipendenti."
+        dest: /etc/motd

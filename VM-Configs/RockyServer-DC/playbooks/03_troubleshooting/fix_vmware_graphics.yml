@@ -1,0 +1,21 @@
+---
+- name: Fix Definitivo Freeze VMware (Forza Software Rendering)
+  hosts: ubuntu_clients
+  become: yes
+  tasks:
+    - name: 1. Disabilita i driver hardware 3D aggiungendo 'nomodeset' a GRUB
+      ansible.builtin.lineinfile:
+        path: /etc/default/grub
+        regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
+        line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash nomodeset"'
+      register: grub_cfg
+
+    - name: 2. Aggiorna il bootloader GRUB
+      ansible.builtin.command: update-grub
+      when: grub_cfg.changed
+
+    - name: 3. Riavvio per caricare il nuovo kernel grafico sicuro
+      ansible.builtin.reboot:
+        msg: "Riavvio per disabilitare accelerazione hardware 3D..."
+        reboot_timeout: 300
+      when: grub_cfg.changed

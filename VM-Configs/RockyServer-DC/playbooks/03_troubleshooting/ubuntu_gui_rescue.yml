@@ -1,0 +1,49 @@
+---
+- name: "Ultimate GUI Rescue - Ripristino totale di Ubuntu e Cinnamon"
+  hosts: ubuntu_clients
+  become: yes
+  tasks:
+    - name: "1. Reinstalla il core grafico di Ubuntu e Cinnamon (Ripara i danni di APT)"
+      ansible.builtin.apt:
+        name:
+          - ubuntu-desktop
+          - gdm3
+          - cinnamon
+          - open-vm-tools-desktop
+        state: present
+        update_cache: yes
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: "2. Imposta GDM3 come Display Manager predefinito e sicuro"
+      ansible.builtin.copy:
+        dest: /etc/X11/default-display-manager
+        content: "/usr/sbin/gdm3\n"
+        mode: '0644'
+
+    - name: "3. Disabilita Wayland su GDM3 (Fix per i freeze su VMware)"
+      ansible.builtin.lineinfile:
+        path: /etc/gdm3/custom.conf
+        regexp: '^#?WaylandEnable='
+        line: 'WaylandEnable=false'
+
+    - name: "4. Crea la cartella dei servizi utente globali (se mancante)"
+      ansible.builtin.file:
+        path: /etc/systemd/user
+        state: directory
+        mode: '0755'
+
+    - name: "5. MASKING: Disinnesca il demone GNOME Accounts puntandolo al nulla"
+      ansible.builtin.file:
+        src: /dev/null
+        dest: /etc/systemd/user/goa-daemon.service
+        state: link
+        force: yes
+
+    - name: "6. Assicurati che il sistema sappia di dover avviare la grafica"
+      ansible.builtin.command: systemctl set-default graphical.target
+
+    - name: "7. Riavvio di emergenza per la resurrezione del Desktop"
+      ansible.builtin.reboot:
+        msg: "Resurrezione interfaccia grafica in corso..."
+        reboot_timeout: 300

@@ -1,0 +1,27 @@
+---
+- name: Sblocco SDDM - Ripristino Driver Video nel Kernel
+  hosts: ubuntu_clients
+  become: yes
+  tasks:
+    - name: 1. Rimuovi 'nomodeset' da GRUB (SDDM ne ha bisogno per avviarsi)
+      ansible.builtin.lineinfile:
+        path: /etc/default/grub
+        regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
+        line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"'
+      register: grub_fix
+
+    - name: 2. Aggiorna il bootloader GRUB
+      ansible.builtin.command: update-grub
+      when: grub_fix.changed
+
+    - name: 3. Assicurati che il server grafico di base sia presente
+      ansible.builtin.apt:
+        name: 
+          - xserver-xorg
+          - xserver-xorg-video-vmware
+        state: present
+
+    - name: 4. Riavvia per caricare l'interfaccia grafica
+      ansible.builtin.reboot:
+        msg: "Ansible: Riavvio per attivare SDDM..."
+        reboot_timeout: 300

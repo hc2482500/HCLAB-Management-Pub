@@ -1,0 +1,111 @@
+---
+- name: Deploy Vaultwarden (Password Manager) su LXD
+  hosts: servers
+  become: yes
+  vars:
+    vault_ip: "ip-vault-personalizzato"
+    vault_domain: "vault.hcro01.lan"
+    ipa_admin_pass: "Password"
+  tasks:
+    # --- FASE 1: NETWORKING E HOST ---
+    - name: 1. Creazione container Vaultwarden (Ubuntu 22.04)
+      community.general.lxd_container:
+        name: vaultwarden-server
+        state: started
+        source:
+          type: image
+          mode: pull
+          server: https://cloud-images.ubuntu.com/releases
+          protocol: simplestreams
+          alias: "22.04"
+        profiles: ["default"]
+        wait_for_ipv4_addresses: true
+
+    - name: 2. Assegna IP statico al container Vaultwarden
+      ansible.builtin.shell: |
+        lxc network attach lxdbr0 vaultwarden-server eth0 eth0
+        lxc config device set vaultwarden-server eth0 ipv4.address {{ vault_ip }}
+        lxc restart vaultwarden-server
+      ignore_errors: yes
+
+    - name: 3. Esponi Vaultwarden sul Firewall (Porta 8444 verso 443 interno)
+      ansible.posix.firewalld:
+        zone: public
+        port_forward:
+          - port: 8444
+            proto: tcp
+            toport: 443
+            toaddr: "{{ vault_ip }}"
+        permanent: yes
+        state: enabled
+      notify: Ricarica Firewall
+
+    # --- FASE 2: CERTIFICATI FREEIPA (METODO DIRETTO OPENSSL) ---
+    - name: 4. Registra Host, Servizio HTTP e genera Certificato SSL via FreeIPA
+      ansible.builtin.shell:
+        cmd: |
+          echo '{{ ipa_admin_pass }}' | kinit admin
+          
+          # Registra l'host e il servizio ignorando gli errori se esistono già
+          ipa host-add {{ vault_domain }} --force || true
+          ipa service-add HTTP/{{ vault_domain }} || true
+          
+          # Pulisci file precedenti
+          rm -f /etc/pki/tls/certs/vault.crt /etc/pki/tls/private/vault.key /tmp/vault.csr
+          
+          # Genera una chiave privata e un CSR pulito con OpenSSL
+          openssl req -new -newkey rsa:2048 -nodes -keyout /etc/pki/tls/private/vault.key -out /tmp/vault.csr -subj "/CN={{ vault_domain }}"
+          
+          # Richiedi la firma istantanea a FreeIPA bypassando certmonger
+          ipa cert-request /tmp/vault.csr --principal=HTTP/{{ vault_domain }}@HCRO01.LAN --certificate-out=/etc/pki/tls/certs/vault.crt
+          
+          # Assegna i permessi per permettere ad Ansible di leggere i file
+          chmod 644 /etc/pki/tls/private/vault.key /etc/pki/tls/certs/vault.crt
+      ignore_errors: yes
+
+    # --- FASE 3: SETUP INTERNO AL CONTAINER ---
+    - name: 5. Installa Docker e Nginx dentro il container
+      ansible.builtin.shell: |
+        lxc exec vaultwarden-server -- apt update
+        lxc exec vaultwarden-server -- env DEBIAN_FRONTEND=noninteractive apt install -y docker.io nginx
+      ignore_errors: yes
+
+    - name: 6. Avvia Vaultwarden tramite Docker
+      ansible.builtin.shell: |
+        lxc exec vaultwarden-server -- docker stop vaultwarden || true
+        lxc exec vaultwarden-server -- docker rm vaultwarden || true
+        lxc exec vaultwarden-server -- docker run -d --name vaultwarden -v /vw-data/:/data/ -p 8080:80 vaultwarden/server:latest
+      ignore_errors: yes
+
+    - name: 7. Spingi i certificati reali via TEE Pipe
+      ansible.builtin.shell:
+        cmd: |
+          cat /etc/pki/tls/certs/vault.crt | lxc exec vaultwarden-server -- bash -c "cat > /etc/ssl/vault.crt"
+          cat /etc/pki/tls/private/vault.key | lxc exec vaultwarden-server -- bash -c "cat > /etc/ssl/vault.key"
+          lxc exec vaultwarden-server -- chmod 644 /etc/ssl/vault.crt /etc/ssl/vault.key
+      ignore_errors: yes
+
+    - name: 8. Configura Nginx come Reverse Proxy HTTPS e Riavvia
+      ansible.builtin.shell:
+        cmd: |
+          cat << 'EOF' | lxc exec vaultwarden-server -- bash -c "cat > /etc/nginx/sites-available/default"
+          server {
+              listen 443 ssl default_server;
+              server_name vault.hcro01.lan;
+              ssl_certificate /etc/ssl/vault.crt;
+              ssl_certificate_key /etc/ssl/vault.key;
+              location / {
+                  proxy_pass http://localhost:8080;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+          }
+          EOF
+          lxc exec vaultwarden-server -- systemctl restart nginx
+      ignore_errors: yes
+
+  handlers:
+    - name: Ricarica Firewall
+      ansible.builtin.command: firewall-cmd --reload

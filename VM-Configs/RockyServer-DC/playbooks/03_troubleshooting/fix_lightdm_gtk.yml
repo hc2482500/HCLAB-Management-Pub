@@ -1,0 +1,51 @@
+---
+- name: Stabilizzazione Definitiva con LightDM GTK e Cinnamon (Ubuntu 26.04)
+  hosts: ubuntu_clients
+  become: yes
+  tasks:
+    # 1. Rimuovi i greeter problematici (Slick e GDM3)
+    - name: 1. Rimuovi Slick-Greeter e GDM3
+      ansible.builtin.apt:
+        name:
+          - slick-greeter
+          - gdm3
+        state: absent
+        purge: yes
+
+    # 2. Installa il pacchetto LightDM GTK Greeter standard
+    - name: 2. Installa LightDM GTK Greeter
+      ansible.builtin.apt:
+        name:
+          - lightdm
+          - lightdm-gtk-greeter
+        state: present
+        update_cache: yes
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    # 3. Assicurati che LightDM sia il default
+    - name: 3. Forza LightDM come Display Manager
+      ansible.builtin.copy:
+        dest: /etc/X11/default-display-manager
+        content: "/usr/sbin/lightdm\n"
+        mode: '0644'
+
+    # 4. Configurazione base e sicura per LightDM GTK Greeter
+    - name: 4. Configura LightDM GTK Greeter (Configurazione Base)
+      ansible.builtin.copy:
+        dest: /etc/lightdm/lightdm-gtk-greeter.conf
+        content: |
+          [greeter]
+          background = #2c3e50
+          theme-name = Adwaita
+          icon-theme-name = Adwaita
+          # Rimuovi l'immagine utente per evitare problemi di rendering
+          hide-user-image = true
+          indicators = ~spacer;~clock;~spacer;~session;~power
+        mode: '0644'
+
+    # 5. Riavvio per applicare il nuovo Display Manager
+    - name: 5. Riavvio di Sistema
+      ansible.builtin.reboot:
+        msg: "Applicazione LightDM GTK Greeter..."
+        reboot_timeout: 300

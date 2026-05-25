@@ -1,0 +1,30 @@
+---
+- name: Ricostruzione Driver Grafici VMware e Sblocco SDDM
+  hosts: ubuntu_clients
+  become: yes
+  tasks:
+    - name: 1. Rimuovi 'nomodeset' da GRUB (La causa dello schermo nero)
+      ansible.builtin.lineinfile:
+        path: /etc/default/grub
+        regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
+        line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"'
+      register: grub_fix
+
+    - name: 2. Aggiorna il bootloader per applicare la modifica
+      ansible.builtin.command: update-grub
+      when: grub_fix.changed
+
+    - name: 3. Inietta i Driver Video VMware nativi e le fondamenta X11
+      ansible.builtin.apt:
+        name:
+          - xserver-xorg
+          - xserver-xorg-video-vmware
+          - open-vm-tools-desktop
+          - sddm
+        state: present
+        update_cache: yes
+
+    - name: 4. Riavvio di emergenza per caricare i nuovi driver
+      ansible.builtin.reboot:
+        msg: "Ansible: Riavvio per applicazione driver video VMware..."
+        reboot_timeout: 300

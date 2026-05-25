@@ -1,0 +1,68 @@
+---
+- name: Setup Globale Workstation Aziendali (Ubuntu & Mint)
+  hosts: clients
+  become: yes
+  tasks:
+
+    # ==========================================
+    # BLOCCO 1: SICUREZZA E HARDENING COMUNE
+    # (Ex client_hardening.yml e playbook_standard_policy.yaml)
+    # ==========================================
+    - name: 1.1 Assicurati che UFW (Firewall) sia installato
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+
+    - name: 1.2 Configura e abilita le porte standard
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+        state: enabled
+      loop: ['22', '445', '139', '3389'] # SSH, Samba, RDP
+
+    - name: 1.3 Imposta il MOTD Aziendale
+      ansible.builtin.copy:
+        dest: /etc/motd
+        content: |
+          ************************************************************
+          * ATTENZIONE: Accesso autorizzato solo al personale HCRO01 *
+          * Tutte le attività sono monitorate e registrate.          *
+          ************************************************************
+        mode: '0644'
+
+    # ==========================================
+    # BLOCCO 2: OTTIMIZZAZIONI SPECIFICHE
+    # (Ex opt_perf_ubuntu.yml)
+    # ==========================================
+    - name: 2.1 Ferma servizi inutili (Solo per macchine fisiche/VM specifiche)
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      loop:
+        - ModemManager.service
+        - whoopsie.service
+      ignore_errors: yes
+
+    # ==========================================
+    # BLOCCO 3: JOIN AL DOMINIO FREEIPA
+    # (Unificato e dinamico per Hostname)
+    # ==========================================
+    - name: 3.1 Imposta l'Hostname Dinamico come FQDN
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}.hcro01.lan"
+      # 'inventory_hostname' prende in automatico 'ubuntu-desktop' o 'mint-desktop' dall'inventario!
+
+    - name: 3.2 Assicurati che il DNS punti al server Rocky (FreeIPA)
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/resolved.conf
+        regexp: '^#?DNS='
+        line: 'DNS=ip-domain-controller'
+      notify: Riavvia systemd-resolved
+
+  handlers:
+    - name: Riavvia systemd-resolved
+      ansible.builtin.systemd:
+        name: systemd-resolved
+        state: restarted

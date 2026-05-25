@@ -1,0 +1,62 @@
+---
+- name: Configurazione Desktop Remoto Definitiva (XRDP con XFCE4)
+  hosts: clients
+  become: yes
+  tasks:
+    - name: 1. Rispondi in anticipo al prompt di installazione (Mantieni gdm3)
+      ansible.builtin.debconf:
+        name: shared/default-x-display-manager
+        question: shared/default-x-display-manager
+        value: gdm3
+        vtype: select
+
+    - name: 2. Installa XRDP e XFCE4 (Ambiente grafico leggero per RDP)
+      ansible.builtin.apt:
+        name:
+          - xrdp
+          - xfce4
+          - xfce4-goodies
+        state: present
+        update_cache: yes
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: 3. Aggiungi utente xrdp al gruppo ssl-cert
+      ansible.builtin.user:
+        name: xrdp
+        groups: ssl-cert
+        append: yes
+
+    - name: 4. Configura XRDP per avviare globalmente XFCE4 (Bypass GNOME)
+      ansible.builtin.copy:
+        dest: /etc/xrdp/startwm.sh
+        content: |
+          #!/bin/sh
+          if [ -r /etc/default/locale ]; then
+            . /etc/default/locale
+            export LANG LANGUAGE
+          fi
+          exec startxfce4
+        mode: '0755'
+      notify: Riavvia XRDP
+
+    - name: 5. Rimuovi file .xsession utente (Forza la configurazione globale)
+      ansible.builtin.file:
+        path: "/home/{{ item }}/.xsession"
+        state: absent
+      loop:
+        - hcrockyadmin
+        - utest01
+      ignore_errors: yes
+
+    - name: 6. Apri la porta 3389 sul firewall client
+      community.general.ufw:
+        rule: allow
+        port: '3389'
+        proto: tcp
+
+  handlers:
+    - name: Riavvia XRDP
+      ansible.builtin.systemd:
+        name: xrdp
+        state: restarted

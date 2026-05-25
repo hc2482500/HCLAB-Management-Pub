@@ -1,0 +1,21 @@
+---
+- name: Atto 0 - Connessione al Container
+  hosts: servers
+  become: yes
+  tasks:
+    - name: Registra il container in memoria
+      add_host:
+        name: web-server-aziendale
+        ansible_connection: lxd
+        ansible_user: root
+        ansible_remote_tmp: /tmp
+
+- name: Atto 1 - Fix Link Vaultwarden
+  hosts: web-server-aziendale
+  become: yes
+  tasks:
+    - name: Aggiungi la porta 8444 al link di Vaultwarden
+      ansible.builtin.replace:
+        path: /var/www/html/index.php
+        regexp: 'https://vault.hcro01.lan'
+        replace: 'https://vault.hcro01.lan:8444'

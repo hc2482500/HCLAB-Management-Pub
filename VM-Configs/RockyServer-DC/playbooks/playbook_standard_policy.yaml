@@ -1,0 +1,34 @@
+---
+- name: Standard Workstation Policy (Sicurezza e Branding)
+  hosts: clients
+  become: yes
+
+  tasks:
+    - name: "Policy Sicurezza: Assicurarsi che il Firewall (UFW) sia attivo"
+      community.general.ufw:
+        state: enabled
+        policy: allow
+      tags: security
+
+    - name: "Policy Branding: Configurare il messaggio di benvenuto del terminale"
+      copy:
+        dest: /etc/motd
+        content: |
+          ************************************************************
+          * ATTENZIONE: Accesso autorizzato solo al personale HCRO01 *
+          * Tutte le attività sono monitorate e registrate.          *
+          ************************************************************
+        owner: root
+        group: root
+        mode: '0644'
+      tags: branding
+
+    - name: "Policy Software: Installazione utility di sistema standard"
+      apt:
+        name:
+          - vim
+          - curl
+          - git
+        state: present
+        update_cache: yes
+      tags: software

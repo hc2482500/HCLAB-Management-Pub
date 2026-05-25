@@ -1,0 +1,64 @@
+---
+- name: "Soluzione Definitiva VM - Nomodeset, LightDM e Cinnamon Puro"
+  hosts: ubuntu_clients
+  become: yes
+  tasks:
+    - name: "1. Forza Software Rendering (nomodeset) nel Kernel per evitare schermi neri"
+      ansible.builtin.lineinfile:
+        path: /etc/default/grub
+        regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
+        line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash nomodeset"'
+      register: grub_fix
+
+    - name: "2. Aggiorna GRUB"
+      ansible.builtin.command: update-grub
+      when: grub_fix.changed
+
+    - name: "3. Disinstalla GDM3 (Il colpevole del cursore lampeggiante)"
+      ansible.builtin.apt:
+        name: gdm3
+        state: absent
+        purge: yes
+
+    - name: "4. Installa l'ecosistema LightDM e Slick Greeter"
+      ansible.builtin.apt:
+        name:
+          - lightdm
+          - slick-greeter
+          - cinnamon
+        state: present
+        update_cache: yes
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: "5. Imposta LightDM come Display Manager predefinito"
+      ansible.builtin.copy:
+        dest: /etc/X11/default-display-manager
+        content: "/usr/sbin/lightdm\n"
+        mode: '0644'
+
+    - name: "6. Configura Slick Greeter in modo pulito e sicuro"
+      ansible.builtin.copy:
+        dest: /etc/lightdm/slick-greeter.conf
+        content: |
+          [Greeter]
+          background=#2c3e50
+          theme-name=Adwaita
+          icon-theme-name=Adwaita
+          draw-user-backgrounds=false
+          show-a11y=false
+          show-keyboard=false
+        mode: '0644'
+
+    - name: "7. MASKING: Disabilita per sempre i demoni di accessibilità (Causa del freeze su password)"
+      ansible.builtin.systemd:
+        name: at-spi-dbus-bus.service
+        masked: yes
+        enabled: no
+        state: stopped
+      ignore_errors: yes
+
+    - name: "8. Riavvio finale con il nuovo stack grafico"
+      ansible.builtin.reboot:
+        msg: "Riavvio con stack grafico LightDM stabilizzato..."
+        reboot_timeout: 300

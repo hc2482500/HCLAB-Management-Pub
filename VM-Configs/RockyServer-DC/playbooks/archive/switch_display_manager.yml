@@ -1,0 +1,49 @@
+---
+- name: Sostituzione GDM3 con LightDM per stabilità Cinnamon
+  hosts: ubuntu_clients
+  become: yes
+  tasks:
+    - name: 1. Installa LightDM e il greeter GTK
+      ansible.builtin.apt:
+        name:
+          - lightdm
+          - lightdm-gtk-greeter
+        state: present
+        update_cache: yes
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: 2. Disabilita GDM3
+      ansible.builtin.systemd:
+        name: gdm3
+        enabled: no
+        state: stopped
+      ignore_errors: yes
+
+    - name: 3. Imposta LightDM come Display Manager predefinito
+      ansible.builtin.copy:
+        dest: /etc/X11/default-display-manager
+        content: "/usr/sbin/lightdm\n"
+        mode: '0644'
+
+    - name: 4. Abilita e avvia LightDM
+      ansible.builtin.systemd:
+        name: lightdm
+        enabled: yes
+        state: started
+
+    - name: 5. Assicurati che Cinnamon sia la sessione di default per LightDM
+      ansible.builtin.copy:
+        dest: /etc/lightdm/lightdm.conf.d/50-ubuntu.conf
+        content: |
+          [Seat:*]
+          user-session=cinnamon
+        mode: '0644'
+        # Crea la cartella se non esiste
+      notify: Riavvia LightDM
+
+  handlers:
+    - name: Riavvia LightDM
+      ansible.builtin.systemd:
+        name: lightdm
+        state: restarted

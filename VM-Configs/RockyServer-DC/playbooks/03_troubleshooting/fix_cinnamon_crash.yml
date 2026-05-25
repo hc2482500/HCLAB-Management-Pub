@@ -1,0 +1,21 @@
+---
+- name: Fix Crash Cinnamon e Conflitto SSO Enterprise
+  hosts: ubuntu_clients
+  become: yes
+  tasks:
+    - name: 1. Disinstalla GNOME Online Accounts (Causa del freeze su Cinnamon)
+      ansible.builtin.apt:
+        name: gnome-online-accounts
+        state: absent
+        purge: yes
+
+    - name: 2. Pulisci la cache grafica bloccata degli utenti
+      ansible.builtin.shell: |
+        rm -rf /home/*/.config/dconf/user
+        rm -rf /home/*/.cinnamon/
+      ignore_errors: yes
+
+    - name: 3. Riavvia GDM3 per ricaricare la sessione pulita
+      ansible.builtin.systemd:
+        name: gdm3
+        state: restarted

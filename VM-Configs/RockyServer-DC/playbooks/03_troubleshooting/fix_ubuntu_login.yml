@@ -1,0 +1,34 @@
+---
+- name: Sostituzione Greeter per fixare il Freeze su Ubuntu
+  hosts: ubuntu_clients
+  become: yes
+  tasks:
+    - name: 1. Installa Slick Greeter (A prova di freeze)
+      ansible.builtin.apt:
+        name: slick-greeter
+        state: present
+        update_cache: yes
+
+    - name: 2. Rimuovi il vecchio GTK Greeter difettoso
+      ansible.builtin.apt:
+        name: lightdm-gtk-greeter
+        state: absent
+
+    - name: 3. Configura Slick Greeter in stile Dark
+      ansible.builtin.copy:
+        dest: /etc/lightdm/slick-greeter.conf
+        content: |
+          [Greeter]
+          background=/usr/share/backgrounds/ubuntu-default-greyscale-wallpaper.png
+          theme-name=Yaru-dark
+          icon-theme-name=Yaru-dark
+          draw-user-backgrounds=false
+          show-hostname=true
+        mode: '0644'
+      notify: Riavvia LightDM
+
+  handlers:
+    - name: Riavvia LightDM
+      ansible.builtin.systemd:
+        name: lightdm
+        state: restarted

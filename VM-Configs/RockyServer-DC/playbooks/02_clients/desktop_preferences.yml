@@ -1,0 +1,107 @@
+---
+- name: Configurazione Preferenze Desktop e Certificati (Ambiente Cinnamon)
+  hosts: clients
+  become: yes
+  tasks:
+    # ---------------------------------------------------------
+    # FASE 1: REGOLE COMUNI E INSTALLAZIONE SOFTWARE
+    # ---------------------------------------------------------
+    - name: 1. Installa utility e alternative a Windows (Office, File Manager)
+      ansible.builtin.apt:
+        name: 
+          - libnss3-tools
+          - dconf-cli
+          - libreoffice-writer
+          - libreoffice-calc
+          - nemo
+        state: present
+        update_cache: yes
+
+    - name: 2. Crea la directory per i "lucchetti" delle policy
+      ansible.builtin.file:
+        path: /etc/dconf/db/local.d/locks
+        state: directory
+        mode: '0755'
+
+    - name: 3. Crea il profilo dconf aziendale per gli utenti
+      ansible.builtin.copy:
+        dest: /etc/dconf/profile/user
+        content: |
+          user-db:user
+          system-db:local
+        mode: '0644'
+
+    # ---------------------------------------------------------
+    # FASE 2: IMPOSTAZIONI CINNAMON (Applicate a TUTTI)
+    # ---------------------------------------------------------
+
+    - name: 4. Definisci le impostazioni grafiche, icone Desktop e Menu Preferiti
+      ansible.builtin.copy:
+        dest: /etc/dconf/db/local.d/00-cinnamon-settings
+        content: |
+          [org/cinnamon/desktop/interface]
+          toolkit-accessibility=false
+
+          [org/cinnamon/theme]
+          name='Mint-Y-Dark'
+
+          [org/nemo/desktop]
+          computer-icon-visible=true
+          home-icon-visible=true
+          trash-icon-visible=true
+
+          [org/cinnamon]
+          favorite-apps=['brave-browser.desktop', 'firefox_firefox.desktop', 'nemo.desktop', 'gnome-terminal.desktop', 'libreoffice-writer.desktop', 'libreoffice-calc.desktop']
+        mode: '0644'
+      notify: Aggiorna dconf
+
+    - name: 5. Popola la Scrivania (per utenti esistenti e NUOVI utenti di Dominio)
+      ansible.builtin.shell:
+        cmd: |
+          APPS=("brave-browser.desktop" "firefox_firefox.desktop" "nemo.desktop" "libreoffice-writer.desktop" "libreoffice-calc.desktop" "gnome-terminal.desktop")
+          
+          # 1. Prepariamo lo "scheletro" per i futuri utenti di Dominio
+          mkdir -p /etc/skel/Scrivania /etc/skel/Desktop
+          
+          for app in "${APPS[@]}"; do
+            for path in "/usr/share/applications" "/var/lib/snapd/desktop/applications"; do
+              if [ -f "$path/$app" ]; then
+                cp "$path/$app" /etc/skel/Scrivania/
+                cp "$path/$app" /etc/skel/Desktop/
+              fi
+            done
+          done
+          chmod +x /etc/skel/Scrivania/*.desktop /etc/skel/Desktop/*.desktop 2>/dev/null || true
+          
+          # 2. Copiamo le icone anche agli utenti locali già esistenti in /home
+          for user_home in /home/*; do
+            [ -d "$user_home" ] || continue
+            username=$(basename "$user_home")
+            if [ -d "$user_home/Scrivania" ]; then desk_path="$user_home/Scrivania"
+            else desk_path="$user_home/Desktop"; mkdir -p "$desk_path"; fi
+            
+            cp /etc/skel/Desktop/*.desktop "$desk_path/" 2>/dev/null || true
+            chown -R "$username:$username" "$desk_path"
+          done
+        executable: /bin/bash
+      changed_when: true
+      ignore_errors: yes
+
+    # ---------------------------------------------------------
+    # FASE 3: CERTIFICATI FREEIPA E BROWSER
+    # ---------------------------------------------------------
+    - name: 6. Copia la CA di FreeIPA nei certificati di sistema globali
+      ansible.builtin.copy:
+        src: /etc/ipa/ca.crt
+        dest: /usr/local/share/ca-certificates/freeipa.crt
+        remote_src: yes
+        mode: '0644'
+      register: system_cert
+
+    - name: 7. Aggiorna i certificati di sistema dell'OS
+      ansible.builtin.command: update-ca-certificates
+      when: system_cert.changed
+
+  handlers:
+    - name: Aggiorna dconf
+      ansible.builtin.command: dconf update

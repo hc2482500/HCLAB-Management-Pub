@@ -1,0 +1,36 @@
+---
+- name: Configura Proxy e DNS per Intranet (RBAC)
+  hosts: servers
+  become: yes
+  vars:
+    ipa_admin_pass: "Password"
+  tasks:
+    - name: 1. Ottieni l'IP interno del container Nginx
+      ansible.builtin.shell: lxc list web-server-aziendale -c 4 --format csv | awk '{print $1}'
+      register: lxc_ip
+      changed_when: false
+
+    - name: 2. Registra il DNS intranet.hcro01.lan verso il server Rocky
+      ansible.builtin.shell: |
+        echo '{{ ipa_admin_pass }}' | kinit admin
+        ipa dnsrecord-add hcro01.lan intranet --a-rec=#ip-host
+      ignore_errors: yes
+
+    - name: 3. Crea il Reverse Proxy su Apache (Rocky) verso il Container (Nginx)
+      ansible.builtin.copy:
+        dest: /etc/httpd/conf.d/intranet-proxy.conf
+        content: |
+          <VirtualHost *:80>
+              ServerName intranet.hcro01.lan
+              ProxyPreserveHost On
+              ProxyPass / http://{{ lxc_ip.stdout }}/
+              ProxyPassReverse / http://{{ lxc_ip.stdout }}/
+          </VirtualHost>
+        mode: '0644'
+      notify: Riavvia Apache
+
+  handlers:
+    - name: Riavvia Apache
+      ansible.builtin.systemd:
+        name: httpd
+        state: restarted

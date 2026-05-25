@@ -1,0 +1,32 @@
+---
+- name: "Abbandono Slick Greeter e Passaggio Definitivo a SDDM"
+  hosts: ubuntu_clients
+  become: yes
+  tasks:
+    - name: "1. Polverizza i greeter GTK difettosi (Slick, LightDM, GDM3)"
+      ansible.builtin.apt:
+        name:
+          - slick-greeter
+          - lightdm
+          - gdm3
+        state: absent
+        purge: yes
+
+    - name: "2. Installa SDDM (Immune ai freeze GTK)"
+      ansible.builtin.apt:
+        name: sddm
+        state: present
+        update_cache: yes
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: "3. Imposta SDDM come Display Manager predefinito"
+      ansible.builtin.copy:
+        dest: /etc/X11/default-display-manager
+        content: "/usr/sbin/sddm\n"
+        mode: '0644'
+
+    - name: "4. Riavvio per applicare il nuovo motore di login"
+      ansible.builtin.reboot:
+        msg: "Passaggio a SDDM in corso..."
+        reboot_timeout: 300

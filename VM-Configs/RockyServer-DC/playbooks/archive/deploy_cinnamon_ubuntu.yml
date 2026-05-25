@@ -1,0 +1,39 @@
+---
+- name: Sostituzione GNOME con Cinnamon su Ubuntu
+  hosts: ubuntu_clients
+  become: yes
+  tasks:
+    - name: 1. Installa l'ambiente desktop Cinnamon
+      ansible.builtin.apt:
+        name: cinnamon
+        state: present
+        update_cache: yes
+
+    - name: 2. Imposta Cinnamon come sessione di default globale
+      ansible.builtin.copy:
+        dest: /usr/share/xsessions/default.desktop
+        content: |
+          [Desktop Entry]
+          Type=Application
+          Exec=cinnamon-session
+          Name=Cinnamon
+        mode: '0644'
+
+    - name: 3. Assicurati che XRDP usi Cinnamon
+      ansible.builtin.copy:
+        dest: /etc/xrdp/startwm.sh
+        content: |
+          #!/bin/sh
+          if [ -r /etc/default/locale ]; then
+            . /etc/default/locale
+            export LANG LANGUAGE
+          fi
+          exec cinnamon-session
+        mode: '0755'
+      notify: Riavvia XRDP
+
+  handlers:
+    - name: Riavvia XRDP
+      ansible.builtin.systemd:
+        name: xrdp
+        state: restarted

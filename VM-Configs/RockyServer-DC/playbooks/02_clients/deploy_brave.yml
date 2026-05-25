@@ -1,0 +1,51 @@
+---
+- name: Installazione e Configurazione Enterprise di Brave Browser
+  hosts: clients
+  become: yes
+  tasks:
+    - name: 1. Installa i prerequisiti di sistema
+      ansible.builtin.apt:
+        name: 
+          - curl
+          - apt-transport-https
+        state: present
+        update_cache: yes
+
+    - name: 2. Scarica la chiave GPG ufficiale di Brave
+      ansible.builtin.get_url:
+        url: https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+        dest: /usr/share/keyrings/brave-browser-archive-keyring.gpg
+        mode: '0644'
+
+    - name: 3. Aggiungi il repository ufficiale di Brave
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main"
+        state: present
+        filename: brave-browser-release
+
+    - name: 4. Installa Brave Browser
+      ansible.builtin.apt:
+        name: brave-browser
+        state: present
+        update_cache: yes
+
+    - name: 5. Crea la directory per le policy gestite dall'azienda
+      ansible.builtin.file:
+        path: /etc/brave/policies/managed
+        state: directory
+        mode: '0755'
+
+    - name: 6. Distribuisci la Policy Aziendale (Homepage e Fix DNS per /etc/hosts)
+      ansible.builtin.copy:
+        dest: /etc/brave/policies/managed/aziendale.json
+        content: |
+          {
+            "HomepageLocation": "https://web.hcro01.lan",
+            "RestoreOnStartup": 4,
+            "RestoreOnStartupURLs": [
+              "https://web.hcro01.lan"
+            ],
+            "DnsOverHttpsMode": "off",
+            "BuiltInDnsClientEnabled": false
+          }
+        mode: '0644'

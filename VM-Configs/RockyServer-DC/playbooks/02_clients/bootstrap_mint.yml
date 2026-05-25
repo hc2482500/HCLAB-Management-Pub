@@ -1,0 +1,26 @@
+---
+- name: Sblocco e Inizializzazione Client Linux Mint per Ansible
+  hosts: mint_clients
+  gather_facts: yes
+  become: yes
+  tasks:
+    - name: 1. Installa OpenSSH Server (Idempotente - lo ignora se gia presente)
+      ansible.builtin.apt:
+        name: openssh-server
+        state: present
+        update_cache: yes
+
+    - name: 2. Configura Sudo senza password per l'amministratore locale
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers.d/ansible-override
+        line: "hcmint ALL=(ALL) NOPASSWD:ALL"
+        create: yes
+        mode: '0440'
+
+    - name: 3. Autorizza la chiave pubblica di Rocky Linux in automatico
+      ansible.posix.authorized_key:
+        user: hcmint
+        state: present
+        key: "{{ lookup('file', item) }}"
+      with_fileglob:
+        - "/home/hcrockyserver/.ssh/*.pub"

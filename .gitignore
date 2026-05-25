@@ -1,0 +1,26 @@
+# Log e file temporanei Ansible
+*.retry
+*.log
+.tmp/
+.cache/
+
+# File di sistema Windows/Linux
+.DS_Store
+Thumbs.db
+*~
+*.swp
+
+# Sicurezza: MAI caricare chiavi e certificati!
+*.pem
+*.key
+*.crt
+*.csr
+id_rsa*
+id_ed25519*
+.vault_pass
+
+# Escludi file fisici di macchine virtuali (se mai ci finissero per sbaglio)
+*.vmdk
+*.ova
+*.iso
+*.vhdx

@@ -1,0 +1,109 @@
+---
+# ATTO 1: Creazione del Container sull'host Rocky Linux
+- name: Deploy Container Web Nginx
+  hosts: servers
+  become: yes
+  tasks:
+    - name: Creazione container Ubuntu 26.04
+      community.general.lxd_container:
+        name: web-server-aziendale
+        state: started
+        source:
+          type: image
+          mode: pull
+          server: https://cloud-images.ubuntu.com/releases
+          protocol: simplestreams
+          alias: "22.04" # Usa l'immagine stabile disponibile, si aggiornerà internamente
+        profiles: ["default"]
+        wait_for_ipv4_addresses: true
+
+    - name: Registra il container per l'automazione (Senza SSH)
+      add_host:
+        name: web-server-aziendale
+        ansible_connection: lxd
+        ansible_user: root
+        ansible_remote_tmp: /tmp
+
+# ATTO 2: Configurazione interna del Container e Sicurezza HTTPS
+- name: Configurazione interna del Container Web
+  hosts: web-server-aziendale
+  become: no
+  tasks:
+    - name: Installazione Nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+        update_cache: yes
+
+    - name: Configurazione Landing Page Corporate HTML/CSS
+      ansible.builtin.copy:
+        dest: /var/www/html/index.html
+        content: |
+          <!DOCTYPE html>
+          <html lang="it">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>HCRO01 - Corporate Portal</title>
+              <style>
+                  body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: #ffffff; }
+                  header { background: #1f1f1f; padding: 20px 50px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00a8ff; }
+                  header h1 { margin: 0; color: #00a8ff; font-size: 24px; letter-spacing: 2px; }
+                  .hero { text-align: center; padding: 100px 20px; background: linear-gradient(135deg, #1e1e1e 0%, #121212 100%); border-bottom: 1px solid #333; }
+                  .hero h2 { font-size: 48px; margin-bottom: 10px; }
+                  .hero p { font-size: 20px; color: #aaaaaa; max-width: 700px; margin: 0 auto 40px auto; line-height: 1.6; }
+                  .btn { background: #00a8ff; color: #fff; padding: 15px 30px; text-decoration: none; font-size: 18px; border-radius: 5px; transition: 0.3s; font-weight: bold; }
+                  .btn:hover { background: #0088cc; box-shadow: 0 0 15px rgba(0, 168, 255, 0.5); }
+                  .features { display: flex; justify-content: center; flex-wrap: wrap; gap: 30px; padding: 60px 20px; }
+                  .card { background: #1f1f1f; padding: 30px; border-radius: 8px; width: 300px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border-top: 4px solid #333; transition: 0.3s; }
+                  .card:hover { border-top: 4px solid #00a8ff; transform: translateY(-5px); }
+                  .card h3 { color: #ffffff; font-size: 22px; }
+                  .card p { color: #888888; line-height: 1.5; }
+                  footer { text-align: center; padding: 20px; background: #0a0a0a; color: #555; font-size: 14px; }
+              </style>
+          </head>
+          <body>
+              <header>
+                  <h1>HCRO01 LAB</h1>
+                  <nav style="color: #888;">Intranet Portal v2.0</nav>
+              </header>
+              <div class="hero">
+                  <h2>Infrastruttura IT di Nuova Generazione</h2>
+                  <p>Benvenuto nel portale aziendale. Questo ambiente è completamente gestito tramite automazione Ansible e protetto da policy di sicurezza Zero Trust.</p>
+                  <a href="#" class="btn">Accedi alla Dashboard</a>
+              </div>
+              <div class="features">
+                  <div class="card">
+                      <h3>Vaultwarden</h3>
+                      <p>Gestione centralizzata e crittografata delle password e dei segreti aziendali.</p>
+                  </div>
+                  <div class="card">
+                      <h3>FreeIPA</h3>
+                      <p>Identity Management e Single Sign-On (SSO) per l'accesso sicuro dei dipendenti.</p>
+                  </div>
+                  <div class="card">
+                      <h3>Ansible Tower</h3>
+                      <p>Orchestrazione e configurazione automatizzata del parco macchine.</p>
+                  </div>
+              </div>
+              <footer>
+                  &copy; 2026 HCRO01 Enterprise Lab. Tutti i diritti riservati.
+              </footer>
+          </body>
+          </html>
+
+    - name: Crea la directory per i certificati CA personalizzati
+      ansible.builtin.file:
+        path: /usr/local/share/ca-certificates/
+        state: directory
+        mode: '0755'
+
+    - name: Copia il certificato Root CA di FreeIPA dal server Rocky (Host) al Container
+      ansible.builtin.copy:
+        src: /etc/ipa/ca.crt
+        dest: /usr/local/share/ca-certificates/freeipa-ca.crt
+        mode: '0644'
+
+    - name: Aggiorna l'elenco dei certificati attendibili nel container
+      ansible.builtin.command: update-ca-certificates
+      changed_when: true

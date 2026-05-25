@@ -1,0 +1,34 @@
+---
+- name: Stile Dark Enterprise per LightDM su Ubuntu 26.04 (Fix Freeze)
+  hosts: ubuntu_clients
+  become: yes
+  tasks:
+    - name: 1. Installa il tema nativo Yaru (Ottimizzato per Ubuntu 26.04)
+      ansible.builtin.apt:
+        name: yaru-theme-gtk
+        state: present
+
+    - name: 2. Applica il tema, riposiziona al centro e mostra l'avatar
+      ansible.builtin.copy:
+        dest: /etc/lightdm/lightdm-gtk-greeter.conf
+        content: |
+          [greeter]
+          background = #2c3e50
+          # Usiamo il tema scuro nativo di Ubuntu per evitare crash grafici sulla password
+          theme-name = Yaru-dark
+          icon-theme-name = Yaru-dark
+          font-name = Ubuntu 11
+          # Posiziona il box perfettamente al centro
+          position = 50%,center 50%,center
+          # Mostra l'immagine del profilo utente
+          hide-user-image = false
+          # Rimuove le icone di accessibilità che spesso causano freeze su VMware
+          indicators = ~host;~spacer;~clock;~spacer;~session;~power
+        mode: '0644'
+      notify: Riavvia LightDM
+
+  handlers:
+    - name: Riavvia LightDM
+      ansible.builtin.systemd:
+        name: lightdm
+        state: restarted
