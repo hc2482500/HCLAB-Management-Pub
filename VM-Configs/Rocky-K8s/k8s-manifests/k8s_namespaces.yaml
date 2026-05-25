@@ -1,0 +1,169 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    creationTimestamp: "2026-04-23T08:06:51Z"
+    labels:
+      kubernetes.io/metadata.name: cert-manager
+      name: cert-manager
+    name: cert-manager
+    resourceVersion: "82169"
+    uid: f512c2e6-5881-458d-8526-97f92726e796
+  spec:
+    finalizers:
+    - kubernetes
+  status:
+    phase: Active
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    creationTimestamp: "2026-04-20T11:09:58Z"
+    labels:
+      kubernetes.io/metadata.name: default
+    name: default
+    resourceVersion: "19"
+    uid: d1210a84-57ed-4961-a952-1a1d4fb37f2a
+  spec:
+    finalizers:
+    - kubernetes
+  status:
+    phase: Active
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    creationTimestamp: "2026-04-20T11:09:58Z"
+    labels:
+      kubernetes.io/metadata.name: kube-node-lease
+    name: kube-node-lease
+    resourceVersion: "24"
+    uid: a475f974-ee57-4f1c-ba46-d08825e53abf
+  spec:
+    finalizers:
+    - kubernetes
+  status:
+    phase: Active
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    creationTimestamp: "2026-04-20T11:09:58Z"
+    labels:
+      kubernetes.io/metadata.name: kube-public
+    name: kube-public
+    resourceVersion: "12"
+    uid: b487a4cb-2f3d-4e54-8324-eccbead69d63
+  spec:
+    finalizers:
+    - kubernetes
+  status:
+    phase: Active
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    creationTimestamp: "2026-04-20T11:09:58Z"
+    labels:
+      kubernetes.io/metadata.name: kube-system
+    name: kube-system
+    resourceVersion: "5"
+    uid: 5b95bbf6-ed7b-48ac-a0ec-450c1ac3af6b
+  spec:
+    finalizers:
+    - kubernetes
+  status:
+    phase: Active
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    creationTimestamp: "2026-04-21T13:17:36Z"
+    labels:
+      kubernetes.io/metadata.name: longhorn-system
+      name: longhorn-system
+    name: longhorn-system
+    resourceVersion: "20752"
+    uid: 88468bbc-2e0f-4832-a3a9-32bae333e4fe
+  spec:
+    finalizers:
+    - kubernetes
+  status:
+    phase: Active
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    creationTimestamp: "2026-04-23T07:51:37Z"
+    labels:
+      kubernetes.io/metadata.name: metallb-system
+      name: metallb-system
+    name: metallb-system
+    resourceVersion: "80587"
+    uid: 1c8f30db-04ec-4fdd-a6f3-0acb40b5899b
+  spec:
+    finalizers:
+    - kubernetes
+  status:
+    phase: Active
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    creationTimestamp: "2026-04-23T06:36:07Z"
+    labels:
+      kubernetes.io/metadata.name: monitoring
+    name: monitoring
+    resourceVersion: "73142"
+    uid: 80022ad9-431d-4942-901b-e91b2b58b23f
+  spec:
+    finalizers:
+    - kubernetes
+  status:
+    phase: Active
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    creationTimestamp: "2026-04-21T12:35:45Z"
+    labels:
+      kubernetes.io/metadata.name: monitoring-pro
+      name: monitoring-pro
+    name: monitoring-pro
+    resourceVersion: "19428"
+    uid: 850aa09c-22a9-428b-96f5-e2918aa29755
+  spec:
+    finalizers:
+    - kubernetes
+  status:
+    phase: Active
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    creationTimestamp: "2026-04-20T13:51:01Z"
+    labels:
+      io.portainer.kubernetes.resourcepool.name: netdata
+      io.portainer.kubernetes.resourcepool.owner: admin
+      kubernetes.io/metadata.name: netdata
+    name: netdata
+    resourceVersion: "5022"
+    uid: abfbde74-7ecd-4fa5-8679-f27982c44d16
+  spec:
+    finalizers:
+    - kubernetes
+  status:
+    phase: Active
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{},"labels":{"pod-security.kubernetes.io/enforce":"privileged"},"name":"portainer"}}
+    creationTimestamp: "2026-04-20T12:28:15Z"
+    labels:
+      kubernetes.io/metadata.name: portainer
+      pod-security.kubernetes.io/enforce: privileged
+    name: portainer
+    resourceVersion: "1941"
+    uid: dc0ae0f6-0101-4e16-a114-3f6f22d0cff4
+  spec:
+    finalizers:
+    - kubernetes
+  status:
+    phase: Active
+kind: List
+metadata:
+  resourceVersion: ""
