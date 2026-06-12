@@ -21,4 +21,9 @@ git commit -m $Messaggio
 Write-Host "3. Spedizione su GitHub in corso..." -ForegroundColor Cyan
 git push
 
-Write-Host "✅ Finito! Tutti i file sono al sicuro nel cloud." -ForegroundColor Green
+# Controlla se l'ultimo comando (git push) ha restituito un errore
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "✅ Finito! Tutti i file sono al sicuro nel cloud." -ForegroundColor Green
+} else {
+    Write-Host "❌ ATTENZIONE: Si è verificato un errore durante la spedizione! Controlla i log qui sopra." -ForegroundColor Red
+}
