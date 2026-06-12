@@ -1,0 +1,71 @@
+---
+- name: "Atto I: Provisioning Host e Creazione Container Git Server (Gitea)"
+  hosts: localhost
+  connection: local
+  become: yes
+  tasks:
+    - name: Creazione del container LXC Ubuntu 22.04 per Gitea
+      community.general.lxd_container:
+        name: gitea-container
+        state: started
+        source:
+          type: image
+          mode: pull
+          server: https://cloud-images.ubuntu.com/releases/
+          protocol: simplestreams
+          alias: "22.04"
+        profiles: ["default"]
+        config:
+          boot.autostart: "true"
+          security.nesting: "true"
+
+    - name: Attesa per l'inizializzazione dell'IP del container
+      ansible.builtin.pause:
+        seconds: 10
+
+    - name: Iniezione a caldo del container nell'inventario in-memory
+      ansible.builtin.add_host:
+        name: gitea-container
+        groups: git_target
+
+- name: "Atto II: Configurazione Interna Guest (Docker & Nginx)"
+  hosts: git_target
+  connection: lxd
+  vars:
+    ansible_user: root
+    ansible_remote_tmp: /tmp
+  tasks:
+    - name: Aggiornamento cache apt e installazione dipendenze
+      ansible.builtin.apt:
+        update_cache: yes
+        name:
+          - docker.io
+          - nginx
+        state: present
+
+    - name: Avvio e persistenza dei servizi interni
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      loop:
+        - docker
+        - nginx
+
+    - name: Assicura la presenza della directory per i dati persistenti di Gitea
+      ansible.builtin.file:
+        path: /srv/gitea
+        state: directory
+        mode: '0750'
+
+    - name: Deployment del container Docker Gitea
+      community.docker.docker_container:
+        name: gitea-server
+        image: gitea/gitea:latest
+        state: started
+        restart_policy: always
+        ports:
+          - "127.0.0.1:3000:3000"
+          - "2222:22"
+        volumes:
+          - "/srv/gitea:/data"

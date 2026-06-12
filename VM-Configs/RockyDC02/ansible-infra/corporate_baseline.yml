@@ -1,0 +1,29 @@
+---
+- name: Baseline Aziendale - Hardening e Software Standard
+  hosts: workstations
+  become: yes  # Esegue tutto come root via sudo (ora senza password!)
+  tasks:
+    - name: Installazione della suite di software aziendali standard
+      ansible.builtin.dnf:
+        name:
+          - git
+          - curl
+          - tmux
+          - fastfetch  # Il sostituto moderno e veloce di neofetch nel 2026
+        state: present
+
+    - name: Hardening Firewall - Assicurati che la zona pubblica permetta il traffico SSH
+      ansible.posix.firewalld:
+        service: ssh
+        zone: public
+        state: enabled
+        permanent: yes
+        immediate: yes
+
+    - name: Hardening Firewall - Rimuovi servizi non autorizzati (es. cockpit)
+      ansible.posix.firewalld:
+        service: cockpit
+        zone: public
+        state: disabled
+        permanent: yes
+        immediate: yes

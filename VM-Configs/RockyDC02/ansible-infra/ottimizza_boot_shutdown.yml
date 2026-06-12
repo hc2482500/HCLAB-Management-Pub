@@ -1,0 +1,61 @@
+---
+- name: "Fase 8.5: Ottimizzazione Definitiva dei Tempi di Boot e Shutdown"
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: 1. Creazione del Servizio di Sblocco Automatico del Login (Anti-Nologin)
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/force-clear-nologin.service
+        content: |
+          [Unit]
+          Description=Forza la rimozione dei file nologin all'avvio precoce
+          DefaultDependencies=no
+          After=systemd-tmpfiles-setup.service
+          Before=systemd-user-sessions.service
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/bin/rm -f /etc/nologin /run/nologin
+          RemainAfterExit=yes
+
+          [Install]
+          WantedBy=sysinit.target
+        mode: '0644'
+
+    - name: 2. Attivazione del servizio Anti-Nologin al boot precoce
+      ansible.builtin.systemd:
+        name: force-clear-nologin.service
+        enabled: yes
+        state: started
+
+    - name: 3. Aggressività massima sui timeout di spegnimento (Riduzione a 10 secondi)
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/system.conf
+        regexp: '^#?DefaultTimeoutStopSec='
+        line: 'DefaultTimeoutStopSec=10s'
+
+    - name: 4. Riduzione del timeout di avvio globale (Velocizzazione boot)
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/system.conf
+        regexp: '^#?DefaultTimeoutStartSec='
+        line: 'DefaultTimeoutStartSec=15s'
+
+    - name: 5. Forzatura chiusura rapida su Apache e Samba
+      ansible.builtin.file:
+        path: "/etc/systemd/system/{{ item }}.service.d"
+        state: directory
+        mode: '0755'
+      loop: ['httpd', 'smb', 'winbind']
+
+    - name: 6. Applicazione override spegnimento immediato per i servizi di rete/storage
+      ansible.builtin.copy:
+        dest: "/etc/systemd/system/{{ item }}.service.d/override.conf"
+        content: |
+          [Service]
+          TimeoutStopSec=10s
+        mode: '0644'
+      loop: ['httpd', 'smb', 'winbind']
+
+    - name: 7. Ricaricamento dei demoni di sistema
+      ansible.builtin.systemd:
+        daemon_reload: yes

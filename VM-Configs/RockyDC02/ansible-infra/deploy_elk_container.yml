@@ -1,0 +1,22 @@
+---
+- name: "Fase 7: Provisioning Container SIEM/ELK"
+  hosts: localhost
+  connection: local
+  become: yes
+  tasks:
+    - name: Creazione del log-container (Ubuntu 22.04)
+      community.general.lxd_container:
+        name: log-container
+        state: started
+        source:
+          type: image
+          mode: pull
+          server: https://cloud-images.ubuntu.com/releases
+          protocol: simplestreams
+          alias: "22.04"
+        profiles: ["default"]
+        wait_for_ipv4_addresses: yes
+
+    - name: Configura l'autostart automatico sul nuovo container
+      ansible.builtin.command:
+        cmd: "/snap/bin/lxc config set log-container boot.autostart true"

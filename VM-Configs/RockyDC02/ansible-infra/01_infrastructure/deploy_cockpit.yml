@@ -1,0 +1,24 @@
+---
+- name: "Fase 11: Installazione e Configurazione Cockpit Web Console"
+  hosts: localhost
+  connection: local
+  become: yes
+  tasks:
+    - name: 1. Installazione di Cockpit e dei moduli di sistema enterprise
+      ansible.builtin.dnf:
+        name:
+          - cockpit
+          - cockpit-storaged
+          - cockpit-networkmanager
+        state: present
+
+    - name: 2. Avvio e persistenza del socket di Cockpit (attivazione on-demand)
+      ansible.builtin.systemd:
+        name: cockpit.socket
+        state: started
+        enabled: yes
+
+    - name: 3. Apertura del servizio Cockpit su firewalld Host
+      ansible.builtin.shell: |
+        firewall-cmd --add-service=cockpit --permanent
+        firewall-cmd --reload

@@ -1,0 +1,32 @@
+---
+- name: "Enforcement Sicurezza Enterprise e Uptime"
+  hosts: localhost
+  connection: local
+  become: yes
+  tasks:
+    - name: Installazione pacchetti kpatch e plugin dnf
+      dnf:
+        name:
+          - kpatch
+          - kpatch-dnf
+        state: present
+
+    - name: Abilitazione persistente del servizio kpatch
+      systemd:
+        name: kpatch
+        enabled: yes
+        state: started
+
+    - name: Garantisce che SELinux sia in modalita Enforcing
+      selinux:
+        policy: targeted
+        state: enforcing
+
+    - name: Configurazione persistente contesto SELinux per Samba su Stratis
+      community.general.sefcontext:
+        target: '/mnt/stratis/samba_share(/.*)?'
+        setype: samba_share_t
+        state: present
+
+    - name: Esecuzione restorecon per applicare il contesto dello storage
+      ansible.builtin.command: restorecon -R /mnt/stratis/samba_share

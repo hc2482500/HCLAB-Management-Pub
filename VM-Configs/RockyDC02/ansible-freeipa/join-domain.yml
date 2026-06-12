@@ -1,0 +1,41 @@
+---
+- name: Automazione Join Dominio FreeIPA (hcro03.lan)
+  hosts: linux_clients
+  become: true
+  vars:
+    ipa_domain: "dominio.qualcosa"
+    ipa_realm: "DOMINIO.QUALCOSA"
+    ipa_server: "server.dominio.qualcosa"
+    ipa_admin_user: "admin"
+    # !!! INSERISCI QUI SOTTO LA TUA PASSWORD REALE DI FREEIPA !!!
+    ipa_admin_password: "password"
+
+  tasks:
+    - name: 🔍 [1/3] Verifica se il client fa già parte del dominio
+      ansible.builtin.stat:
+        path: /etc/ipa/default.conf
+      register: ipa_conf
+
+    - name: 🚀 [2/3] Esecuzione ipa-client-install in modalità automatica (Unattended)
+      ansible.builtin.command: >
+        ipa-client-install --unattended
+        --domain={{ ipa_domain }}
+        --server={{ ipa_server }}
+        --realm={{ ipa_realm }}
+        --principal={{ ipa_admin_user }}
+        --password={{ ipa_admin_password }}
+        --mkhomedir
+      when: not ipa_conf.stat.exists
+      register: join_result
+      changed_when: join_result.rc == 0
+
+    - name: 🔄 [3/3] Assicura che i servizi SSSD e relativi filtri siano attivi
+      ansible.builtin.systemd:
+        name: sssd
+        state: started
+        enabled: true
+      when: not ipa_conf.stat.exists
+
+    - name: 🎉 Notifica Stato
+      ansible.builtin.debug:
+        msg: "Il client hcroclient01 fa già parte del dominio o è stato aggiunto ora con successo!"

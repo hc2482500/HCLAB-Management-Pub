@@ -1,0 +1,48 @@
+# ==============================================================================
+# ESEMPIO DI INVENTARIO ANSIBLE - INFRASTRUTTURA ENTERPRISE (Lab)
+# ==============================================================================
+# ATTENZIONE: Questo è un file di template per la repository pubblica.
+# Sostituire i valori tra < > con gli IP e gli utenti del proprio ambiente reale.
+# ==============================================================================
+
+[master]
+# Master Node: FreeIPA Server, KDC Kerberos, LDAP, BIND DNS, Ansible Control Node
+hcrocky.<TUO_DOMINIO>.lan ansible_host=<IP_MASTER_NODE> ansible_user=<UTENTE_ADMIN> ansible_ssh_private_key_file=~/.ssh/id_ed25519
+
+[workstations]
+# Flotta Client: Fedora/Rocky Linux arruolati a dominio via SSSD (SSO Kerberos)
+hcfedclient.<TUO_DOMINIO>.lan ansible_host=<IP_CLIENT_1> ansible_user=<UTENTE_ADMIN>
+hcroclient01.<TUO_DOMINIO>.lan ansible_host=<IP_CLIENT_2> ansible_user=<UTENTE_ADMIN>
+
+[lxc_containers]
+# Micro-servizi isolati ospitati sul Master Node tramite hypervisor LXD.
+# Nota: L'interazione Ansible avviene bypassando SSH, sfruttando il plugin nativo LXD.
+intranet-container   ansible_connection=lxd ansible_lxd_remote=local ansible_lxd_project=default
+vault-container      ansible_connection=lxd ansible_lxd_remote=local ansible_lxd_project=default
+iam-container        ansible_connection=lxd ansible_lxd_remote=local ansible_lxd_project=default
+gitea-container      ansible_connection=lxd ansible_lxd_remote=local ansible_lxd_project=default
+monitor-container    ansible_connection=lxd ansible_lxd_remote=local ansible_lxd_project=default
+log-container        ansible_connection=lxd ansible_lxd_remote=local ansible_lxd_project=default
+
+# ==============================================================================
+# Raggruppamenti Logici per l'esecuzione mirata dei Playbook
+# ==============================================================================
+
+[identity_and_access]
+hcrocky.<TUO_DOMINIO>.lan
+iam-container
+vault-container
+
+[web_services]
+intranet-container
+gitea-container
+
+[observability_and_siem]
+monitor-container
+log-container
+
+[all:vars]
+# Variabili globali d'ambiente
+ansible_python_interpreter=/usr/bin/python3
+domain_name=<TUO_DOMINIO>.lan
+timezone=Europe/Rome

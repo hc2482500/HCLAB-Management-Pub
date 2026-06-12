@@ -1,0 +1,12 @@
+filebeat.inputs:
+- type: filestream
+  id: system-logs
+  enabled: true
+  paths:
+    - /var/log/messages
+    - /var/log/secure
+    - /var/log/*.log
+
+# --- Sezione di Output Corretta ---
+output.elasticsearch:
+  hosts: ["127.0.0.1:9200"]

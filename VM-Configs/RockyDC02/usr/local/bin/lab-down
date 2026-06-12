@@ -1,0 +1,14 @@
+#!/bin/bash
+echo "=== AVVIO SPEGNIMENTO RAPIDO DEL LABORATORIO ==="
+
+echo "[1/3] Arresto container Gitea..."
+sudo /snap/bin/lxc stop gitea-container --force 2>/dev/null
+
+echo "[2/3] Arresto Reverse Proxy Apache..."
+sudo systemctl stop httpd
+
+echo "[3/3] Sgancio controllato di FreeIPA (LDAP/CA)..."
+sudo ipactl stop
+
+echo "=== INFRASTRUTTURA IN SICUREZZA. ARRESTO VM IN CORSO ==="
+sudo shutdown -h now

@@ -1,0 +1,3 @@
+scrivi questo dentro il powershell del percorso file C:\Users\Hao Chen\Documents\HCLAB-Management-Pub:
+
+powershell -ExecutionPolicy Bypass -File .\aggiungi-dentro-github.ps1 -Messaggio "Il Messaggio che vuoi mettere"

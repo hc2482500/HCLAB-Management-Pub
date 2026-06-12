@@ -1,0 +1,105 @@
+---
+# ==============================================================================
+# ATTO 1: PROVISIONING DEL CONTAINER DI MONITORAGGIO SULL'HOST
+# ==============================================================================
+- name: "Fase 6: Provisioning Container Monitor (Atto 1)"
+  hosts: localhost
+  connection: local
+  become: yes
+  tasks:
+
+    - name: Garantisce la creazione del monitor-container (Ubuntu)
+      community.general.lxd_container:
+        name: monitor-container
+        state: started
+        source:
+          type: image
+          mode: pull
+          server: https://cloud-images.ubuntu.com/releases
+          protocol: simplestreams
+          alias: "22.04"
+        profiles: ["default"]
+        wait_for_ipv4_addresses: yes
+
+    - name: Registra il container nell'inventario in-memory di Ansible
+      ansible.builtin.add_host:
+        name: monitor-container
+        ansible_connection: lxd
+        ansible_user: root
+        ansible_remote_tmp: /tmp
+        groups: monitoring_servers
+
+# ==============================================================================
+# ATTO 2: CONFIGURAZIONE REPOSITORY, STACK MONITOR E CERTIFICATI ACME
+# ==============================================================================
+- name: "Fase 6: Installazione e Certificazione Stack Monitor (Atto 2)"
+  hosts: monitoring_servers
+  tasks:
+
+    - name: Garantisce la presenza delle dipendenze per repository protetti HTTPS
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - software-properties-common
+          - wget
+          - gnupg
+        state: present
+        update_cache: yes
+
+    - name: Crea la directory per i portachiavi di sicurezza (keyrings)
+      ansible.builtin.file:
+        path: /usr/share/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Scarica la chiave GPG ufficiale di Grafana per convalidare i pacchetti
+      ansible.builtin.get_url:
+        url: https://apt.grafana.com/gpg.key
+        dest: /usr/share/keyrings/grafana.key
+        mode: '0644'
+
+    - name: Aggiunge il repository stabile ufficiale di Grafana
+      ansible.builtin.apt_repository:
+        repo: deb [signed-by=/usr/share/keyrings/grafana.key] https://apt.grafana.com stable main
+        state: present
+        filename: grafana
+
+    - name: Installa Prometheus, Grafana, Certbot e utilities
+      ansible.builtin.apt:
+        name:
+          - prometheus
+          - grafana
+          - certbot
+          - ca-certificates
+        state: present
+        update_cache: yes
+
+    - name: Copia il certificato della CA di FreeIPA nel container
+      ansible.builtin.copy:
+        src: /etc/ipa/ca.crt
+        dest: /usr/local/share/ca-certificates/freeipa-ca.crt
+        mode: '0644'
+
+    - name: Aggiorna il database dei certificati affidabili del container
+      ansible.builtin.command: update-ca-certificates
+      changed_when: false
+
+    - name: Riavvia e abilita Prometheus e Grafana al boot interno
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: restarted
+        enabled: yes
+      loop:
+        - prometheus
+        - grafana-server  # <--- CORRETTO: AGGIUNTO -SERVER
+
+    - name: Richiede il certificato SSL alla CA interna di FreeIPA via ACME per il monitor
+      ansible.builtin.command: >
+        certbot certonly --standalone
+        -d tuoipsito.grafana
+        --server https://server.dominio/acme/directory
+        --register-unsafely-without-email
+        --agree-tos
+        --non-interactive
+      register: certbot_output
+      changed_when: "'Successfully received certificate' in certbot_output.stdout"

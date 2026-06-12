@@ -1,0 +1,88 @@
+---
+# ==============================================================================
+# 1. DEPLOY NODE EXPORTER SUI NODI (Bypass Python HTTPS Bug via curl)
+# ==============================================================================
+- name: Deploy Node Exporter sui Nodi (Master e Client)
+  hosts: master, workstations
+  become: yes
+  tasks:
+    - name: Crea utente di sistema isolato per node_exporter
+      ansible.builtin.user:
+        name: node_exporter
+        system: yes
+        shell: /sbin/nologin
+        state: present
+
+    - name: Scarica l'archivio Node Exporter (Bypass curl nativo per Fedora)
+      ansible.builtin.command:
+        cmd: curl -sSL -o /tmp/node_exporter.tar.gz https://github.com/prometheus/node_exporter/releases/download/v1.8.1/node_exporter-1.8.1.linux-amd64.tar.gz
+      args:
+        creates: /tmp/node_exporter.tar.gz
+
+    - name: Decomprime Node Exporter scaricato
+      ansible.builtin.unarchive:
+        src: /tmp/node_exporter.tar.gz
+        dest: /tmp/
+        remote_src: yes
+
+    - name: Sposta il binario eseguibile in /usr/local/bin
+      ansible.builtin.copy:
+        src: "/tmp/node_exporter-1.8.1.linux-amd64/node_exporter"
+        dest: "/usr/local/bin/node_exporter"
+        mode: '0755'
+        owner: node_exporter
+        group: node_exporter
+        remote_src: yes
+
+    - name: Crea il file di servizio SystemD
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/node_exporter.service
+        content: |
+          [Unit]
+          Description=Node Exporter (Sensori Prometheus)
+          After=network.target
+          
+          [Service]
+          User=node_exporter
+          Group=node_exporter
+          Type=simple
+          ExecStart=/usr/local/bin/node_exporter
+          
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Abilitazione e avvio del demone Node Exporter
+      ansible.builtin.systemd:
+        name: node_exporter
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    - name: Hardening Firewall su Master Node (Apertura porta 9100 per lo scrape)
+      ansible.posix.firewalld:
+        port: 9100/tcp
+        permanent: yes
+        state: enabled
+        immediate: yes
+        zone: trusted
+      when: inventory_hostname == 'localhost'
+
+# ==============================================================================
+# 2. CONFIGURAZIONE PROMETHEUS SUL CONTAINER (L'Atto 2 rimane identico)
+# ==============================================================================
+- name: Configurazione Target Prometheus
+  hosts: monitor-container
+  tasks:
+    - name: Inserimento dei target (Master Node) nello scrape config
+      ansible.builtin.blockinfile:
+        path: /etc/prometheus/prometheus.yml
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - LAB TARGETS"
+        block: |
+            - job_name: 'master_node_rocky'
+              static_configs:
+                - targets: ['ip-dc:9100']
+      
+    - name: Riavvia Prometheus per applicare la nuova configurazione
+      ansible.builtin.systemd:
+        name: prometheus
+        state: restarted

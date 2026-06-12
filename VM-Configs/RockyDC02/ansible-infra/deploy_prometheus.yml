@@ -1,0 +1,30 @@
+---
+- name: Deploy Prometheus sul Monitor Container
+  hosts: monitor_container # Assicurati che questo corrisponda al nome nel tuo inventory.ini
+  become: yes
+  tasks:
+    - name: Installazione di Prometheus
+      ansible.builtin.apt:
+        name: prometheus
+        state: present
+        update_cache: yes
+
+    - name: Configurazione iniziale dei target (Scrape Configs)
+      ansible.builtin.blockinfile:
+        path: /etc/prometheus/prometheus.yml
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - LAB TARGETS"
+        block: |
+            - job_name: 'master_node_rocky'
+              static_configs:
+                - targets: ['ip-dc:9100']
+            - job_name: 'intranet_nginx_lxc'
+              static_configs:
+                - targets: ['ip-ct-lxc:9100']
+      notify: Riavvia Prometheus
+
+  handlers:
+    - name: Riavvia Prometheus
+      ansible.builtin.systemd:
+        name: prometheus
+        state: restarted
+        enabled: yes

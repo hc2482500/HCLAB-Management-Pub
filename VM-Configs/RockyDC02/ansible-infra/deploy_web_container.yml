@@ -1,0 +1,98 @@
+---
+# ==============================================================================
+# ATTO 1: PROVISIONING SULL'HOST LOCALE
+# ==============================================================================
+- name: "Fase 5: Provisioning Container LXC (Atto 1)"
+  hosts: localhost
+  connection: local
+  become: yes
+  tasks:
+
+    - name: Garantisce la creazione del container Intranet (Ubuntu)
+      community.general.lxd_container:
+        name: web-container
+        state: started
+        source:
+          type: image
+          mode: pull
+          server: https://cloud-images.ubuntu.com/releases
+          protocol: simplestreams
+          alias: "22.04"
+        profiles: ["default"]
+        wait_for_ipv4_addresses: yes
+
+    - name: Registra il container nell'inventario in-memory di Ansible
+      ansible.builtin.add_host:
+        name: web-container
+        ansible_connection: lxd
+        ansible_user: root
+        ansible_remote_tmp: /tmp
+        groups: guest_containers
+
+# ==============================================================================
+# ATTO 2: CONFIGURAZIONE INTERNA, CA TRUST E AUTOMAZIONE ACME SSL
+# ==============================================================================
+- name: "Fase 5: Configurazione Interna e Certificati SSL (Atto 2)"
+  hosts: guest_containers
+  tasks:
+
+    - name: Aggiorna i repository interni del container
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Installa Nginx, Certbot e utilities
+      ansible.builtin.apt:
+        name:
+          - nginx
+          - certbot
+          - python3-certbot-nginx
+          - ca-certificates
+        state: present
+
+    - name: Copia il certificato della CA di FreeIPA nel container per stabilire la fiducia
+      ansible.builtin.copy:
+        src: /etc/ipa/ca.crt
+        dest: /usr/local/share/ca-certificates/freeipa-ca.crt
+        mode: '0644'
+
+    - name: Aggiorna il database dei certificati affidabili di Ubuntu
+      ansible.builtin.command: update-ca-certificates
+      changed_when: false
+
+    - name: Configura un VirtualHost temporaneo in Nginx per accogliere la richiesta di Certbot
+      ansible.builtin.copy:
+        content: |
+          server {
+              listen 80;
+              server_name tuoipsito.intranet;
+              location / {
+                  root /var/www/html;
+                  index index.html;
+              }
+          }
+        dest: /etc/nginx/sites-available/default
+        mode: '0644'
+
+    - name: Riavvia Nginx per applicare il nome a dominio temporaneo
+      ansible.builtin.systemd:
+        name: nginx
+        state: restarted
+
+    - name: Esegue Certbot e richiede il certificato SSL alla CA interna di FreeIPA via ACME
+      ansible.builtin.command: >
+        certbot --nginx
+        -d tuoipsito.intranet
+        --server https://server.dominio.qualcosa/acme/directory
+        --register-unsafely-without-email
+        --agree-tos
+        --non-interactive
+      register: certbot_output
+      changed_when: "'Successfully received certificate' in certbot_output.stdout"
+
+    - name: Inietta la pagina web aziendale definitiva (Intranet Protetta)
+      ansible.builtin.copy:
+        content: "<h1>Benvenuti nella INTRANET SICURA (HTTPS) HCRO03 (LXC Node)</h1>\n"
+        dest: /var/www/html/index.html
+        owner: www-data
+        group: www-data
+        mode: '0644'

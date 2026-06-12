@@ -1,0 +1,48 @@
+---
+- name: "Fase 8: Configurazione Disaster Recovery Venerdì senza blocco al boot"
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Distribuzione dello script nei binari di sistema
+      ansible.builtin.copy:
+        src: ./backup_lab.sh
+        dest: /usr/local/bin/backup_lab.sh
+        mode: '0700'
+        owner: root
+        group: root
+
+    - name: Creazione del Servizio Systemd per il Backup
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/lab-backup.service
+        content: |
+          [Unit]
+          Description=Servizio di Disaster Recovery Container e FreeIPA
+          After=mnt-stratis-samba_share.mount snap.lxd.daemon.service
+          
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/bin/backup_lab.sh
+        mode: '0644'
+
+    - name: Creazione del Timer Systemd del Venerdì (No Persistence)
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/lab-backup.timer
+        content: |
+          [Unit]
+          Description=Timer per Backup Settimanale del Venerdì a Mezzogiorno
+          
+          [Timer]
+          OnCalendar=Sun 12:00:00
+          RandomizedDelaySec=2m
+          Persistent=false
+          
+          [Install]
+          WantedBy=timers.target
+        mode: '0644'
+
+    - name: Attivazione e caricamento del Timer
+      ansible.builtin.systemd:
+        name: lab-backup.timer
+        state: restarted
+        enabled: yes
+        daemon_reload: yes

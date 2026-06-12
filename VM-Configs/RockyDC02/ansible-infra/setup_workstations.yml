@@ -1,0 +1,18 @@
+---
+- name: Configurazione Iniziale della Workstation
+  hosts: workstations
+  tasks:
+    - name: Creazione della cartella Documenti Aziendali sulla Scrivania
+      ansible.builtin.file:
+        path: /home/hcfedclient/Desktop/Documenti_Aziendali
+        state: directory
+        mode: '0755'
+
+    - name: Generazione del file di benvenuto del reparto IT
+      ansible.builtin.copy:
+        dest: /home/hcfedclient/Desktop/Documenti_Aziendali/LEGGIMI.txt
+        content: |
+          Benvenuto nella rete aziendale DOMINIO.QUALCOSA!
+          Questa postazione è gestita centralmente tramite Ansible.
+          Ogni modifica non autorizzata verrà sovrascritta.
+        mode: '0644'

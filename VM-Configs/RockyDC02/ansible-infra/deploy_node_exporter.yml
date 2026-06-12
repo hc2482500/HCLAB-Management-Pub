@@ -1,0 +1,33 @@
+---
+- name: Deploy Node Exporter per Osservabilità
+  hosts: all
+  become: yes
+  tasks:
+    - name: Installazione Node Exporter (Ubuntu/Debian)
+      ansible.builtin.apt:
+        name: prometheus-node-exporter
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Installazione Node Exporter (Rocky/RedHat)
+      ansible.builtin.dnf:
+        name: golang-github-prometheus-node_exporter
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Abilitazione e avvio del demone Node Exporter
+      ansible.builtin.systemd:
+        name: "{{ 'prometheus-node-exporter' if ansible_os_family == 'Debian' else 'node_exporter' }}"
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    - name: Hardening del Firewall su Rocky Linux (Apertura porta 9100)
+      ansible.posix.firewalld:
+        port: 9100/tcp
+        permanent: yes
+        state: enabled
+        immediate: yes
+        zone: trusted
+      when: ansible_os_family == "RedHat"

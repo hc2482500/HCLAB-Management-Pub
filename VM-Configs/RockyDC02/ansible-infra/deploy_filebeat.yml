@@ -1,0 +1,49 @@
+---
+- name: "Fase 7: Distribuzione Centralizzata Filebeat Enterprise"
+  hosts: all
+  become: yes
+  tasks:
+    # --- WORKAROUND CRITTOGRAFICO PER FEDORA 43 & BASILARE PER ROCKY ---
+    - name: Scarica la chiave GPG di Elastic via curl (Fix bug cert_file)
+      ansible.builtin.command:
+        cmd: "curl -sSL https://artifacts.elastic.co/GPG-KEY-elasticsearch -o /tmp/GPG-KEY-elasticsearch"
+      when: ansible_os_family == "RedHat"
+      changed_when: true
+
+    - name: Importa la chiave GPG nel portachiavi RPM locale
+      ansible.builtin.rpm_key:
+        state: present
+        key: /tmp/GPG-KEY-elasticsearch
+      when: ansible_os_family == "RedHat"
+
+    - name: Configura il repository RPM ufficiale di Elastic
+      ansible.builtin.yum_repository:
+        name: elastic-8.x
+        description: "Repository Elastic per pacchetti 8.x"
+        baseurl: https://artifacts.elastic.co/packages/8.x/yum
+        gpgcheck: yes
+        gpgkey: file:///tmp/GPG-KEY-elasticsearch
+        enabled: yes
+      when: ansible_os_family == "RedHat"
+
+    - name: Installazione del pacchetto Filebeat (Solo host RPM)
+      ansible.builtin.package:
+        name: filebeat
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Distribuzione della configurazione custom filebeat.yml
+      ansible.builtin.copy:
+        src: ./filebeat.yml
+        dest: /etc/filebeat/filebeat.yml
+        owner: root
+        group: root
+        mode: '0600'
+      when: ansible_os_family == "RedHat"
+
+    - name: Abilita e avvia il demone di sistema Filebeat
+      ansible.builtin.systemd:
+        name: filebeat
+        state: restarted
+        enabled: yes
+      when: ansible_os_family == "RedHat"

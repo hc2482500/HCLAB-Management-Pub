@@ -1,0 +1,137 @@
+---
+- name: Configurazione Completa Desktop Aziendale (Brave Default)
+  hosts: linux_clients
+  become: true
+  tasks:
+
+    - name: 1. Installazione del repository EPEL
+      dnf:
+        name: epel-release
+        state: present
+
+    - name: 2. Installazione dei pacchetti grafici base richiesti
+      dnf:
+        name:
+          - gnome-shell-extension-dash-to-panel
+          - gnome-tweaks
+          - wget
+        state: present
+        update_cache: yes
+
+    # --- SEZIONE BRAVE BROWSER ---
+    - name: 3. Importazione della chiave GPG ufficiale di Brave
+      rpm_key:
+        state: present
+        key: https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
+
+    - name: 4. Aggiunta del repository ufficiale di Brave Browser
+      get_url:
+        url: https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
+        dest: /etc/yum.repos.d/brave-browser.repo
+        mode: '0644'
+
+    - name: 5. Installazione di Brave Browser tramite DNF
+      dnf:
+        name: brave-browser
+        state: present
+        update_cache: yes
+    # -----------------------------
+
+    # --- VERIFICA PRESENZA ARCMENU ---
+    - name: 6. Verifica se ArcMenu è già installato nel sistema
+      stat:
+        path: /usr/share/gnome-shell/extensions/arcmenu@arcmenu.com/metadata.json
+      register: arcmenu_check
+
+    - name: 7. Creazione della directory globale per ArcMenu
+      file:
+        path: /usr/share/gnome-shell/extensions/arcmenu@arcmenu.com
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+      when: not arcmenu_check.stat.exists
+
+    - name: 8. Download ed estrazione nativa di ArcMenu v22
+      unarchive:
+        src: https://gitlab.com/ArcMenu/ArcMenu/-/archive/v22/ArcMenu-v22.tar.gz
+        dest: /tmp/
+        remote_src: yes
+      when: not arcmenu_check.stat.exists
+
+    - name: 9. Sincronizzazione dei file estratti di ArcMenu
+      command: cp -r /tmp/ArcMenu-v22/. /usr/share/gnome-shell/extensions/arcmenu@arcmenu.com/
+      when: not arcmenu_check.stat.exists
+
+    - name: 10. Pulizia dei file temporanei di ArcMenu
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/ArcMenu-v22
+        - /tmp/ArcMenu-v22.tar.gz
+      when: not arcmenu_check.stat.exists
+
+    - name: 11. Compilazione dei file di configurazione grafici (GLib Schemas)
+      command: glib-compile-schemas /usr/share/gnome-shell/extensions/arcmenu@arcmenu.com/schemas/
+      when: not arcmenu_check.stat.exists
+
+    - name: 12. Normalizzazione dei permessi di ArcMenu (Cartelle 755, File 644)
+      shell: |
+        find /usr/share/gnome-shell/extensions/arcmenu@arcmenu.com -type d -exec chmod 755 {} \;
+        find /usr/share/gnome-shell/extensions/arcmenu@arcmenu.com -type f -exec chmod 644 {} \;
+      when: not arcmenu_check.stat.exists
+
+    - name: 13. Ripristino dei contesti di sicurezza SELinux per ArcMenu
+      command: restorecon -Rv /usr/share/gnome-shell/extensions/arcmenu@arcmenu.com
+      when: not arcmenu_check.stat.exists
+
+    - name: 14. Isolamento dell'emblema minimale di Rocky Linux
+      copy:
+        src: /usr/share/icons/hicolor/scalable/apps/start-here.svg
+        dest: /usr/share/pixmaps/rocky-emblem.svg
+        remote_src: yes
+        mode: '0644'
+
+    # --- RIMOZIONE ICONE DESKTOP E IMPOSTAZIONE DEFAULT ---
+    - name: "15. Pulizia: Rimozione dell'icona testuale/ridondante dal Desktop"
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/skel/Desktop/brave-browser.desktop
+        - /home/admin/Desktop/brave-browser.desktop
+
+    - name: 16. Impostazione di Brave come Browser Predefinito di Sistema (MIME list)
+      copy:
+        dest: /etc/xdg/mimeapps.list
+        mode: '0644'
+        content: |
+          [Default Applications]
+          text/html=brave-browser.desktop
+          x-scheme-handler/http=brave-browser.desktop
+          x-scheme-handler/https=brave-browser.desktop
+          x-scheme-handler/about=brave-browser.desktop
+          x-scheme-handler/unknown=brave-browser.desktop
+    # ------------------------------------------------------
+
+    - name: 17. Creazione della directory per le policy dconf globali
+      file:
+        path: /etc/dconf/db/local.d
+        state: directory
+        mode: '0755'
+
+    - name: 18. Generazione del profilo dconf aziendale
+      copy:
+        dest: /etc/dconf/db/local.d/00-corporate-desktop
+        mode: '0644'
+        content: |
+          [org/gnome/desktop/wm/preferences]
+          button-layout='appmenu:minimize,maximize,close'
+
+          [org/gnome/shell]
+          favorite-apps=['firefox.desktop', 'brave-browser.desktop', 'org.gnome.Nautilus.desktop', 'org.gnome.Software.desktop', 'org.gnome.Terminal.desktop']
+
+    - name: 19. Aggiornamento del database dconf di sistema
+      command: dconf update
+      
