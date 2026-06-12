@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  web_frontend:
+    image: nginx:alpine
+    container_name: web_frontend
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+    networks:
+      - dmz_net
+
+  cloudflare_tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflare_tunnel
+    restart: always
+    # Usiamo il comando "tunnel --url" puntando al nostro server web interno
+    command: tunnel --no-autoupdate --url http://web_frontend
+    networks:
+      - dmz_net
+    depends_on:
+      - web_frontend
+
+networks:
+  dmz_net:
+    driver: bridge
