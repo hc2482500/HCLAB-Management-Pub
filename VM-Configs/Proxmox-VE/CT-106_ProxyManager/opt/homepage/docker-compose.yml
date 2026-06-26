@@ -1,0 +1,19 @@
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    ports:
+      - "8085:3000"
+    volumes:
+      - ./config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - TZ=Europe/Rome
+      - HOMEPAGE_ALLOWED_HOSTS=homepage.hcro04.lan,192.168.79.166:8085,192.168.1.6:8085,localhost:8085
+    restart: unless-stopped
+    mem_limit: 512m  # Forza un limite massimo di 512MB per evitare che il container cresca troppo
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M

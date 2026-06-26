@@ -1,0 +1,12 @@
+---
+- name: Allineamento risoluzioni DNS locali (File Hosts)
+  hosts: management
+  become: yes
+  tasks:
+    - name: Mappatura sicura di Homepage verso Nginx Proxy Manager
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '^.*homepage\.hcro04\.lan$'
+        line: "x.x.1.6    homepage.hcro04.lan"
+        state: present
+        backup: yes

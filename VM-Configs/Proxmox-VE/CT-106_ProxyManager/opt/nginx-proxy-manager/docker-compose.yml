@@ -1,0 +1,16 @@
+services:
+  app:
+    image: 'lepresidente/nginxproxymanager:latest'
+    container_name: nginx-proxy-manager
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '81:81'
+      - '443:443'
+    environment:
+      - CROWDSEC_ENABLED=true
+      - CROWDSEC_LAPI_URL=http://172.17.0.1:8080
+      - CROWDSEC_BOUNCER_KEY='<REDACTED_BOUNCER_KEY>'
+    volumes:
+      - ./data:/data
+      - ./letsencrypt:/etc/letsencrypt

@@ -1,0 +1,50 @@
+---
+- name: Bootstrap Management Workstation e Join FreeIPA
+  hosts: management
+  become: yes
+  vars:
+    domain: hcro04.lan
+    realm: HCRO04.LAN
+    ipa_server: hcrocky.hcro04.lan
+    admin_user: admin
+    admin_password: "Password-admin-freeipa" # Inserisci la password reale qui
+    hostname: management.hcro04.lan
+
+  tasks:
+    - name: Imposta l'hostname esplicito
+      ansible.builtin.hostname:
+        name: "{{ hostname }}"
+
+    - name: Mappatura FQDN locale in /etc/hosts (Risoluzione bug Python/Socket)
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: x.x.1.7 {{ hostname }} management"
+        state: present
+
+    - name: Aggiornamento cache APT e installazione client FreeIPA
+      ansible.builtin.apt:
+        name: 
+          - freeipa-client
+          - sudo
+        state: present
+        update_cache: yes
+
+    - name: Join automatico al dominio FreeIPA
+      ansible.builtin.command: >
+        ipa-client-install --unattended 
+        --domain={{ domain }} 
+        --realm={{ realm }} 
+        --server={{ ipa_server }} 
+        --principal={{ admin_user }} 
+        --password={{ admin_password }} 
+        --mkhomedir 
+        --no-ntp
+      register: ipa_join
+      failed_when: 
+        - ipa_join.rc != 0
+        - "'Already configured' not in ipa_join.stderr"
+      changed_when: "'Already configured' not in ipa_join.stderr"
+
+    - name: Messaggio di completamento
+      ansible.builtin.debug:
+        msg: "La macchina è stata unita con successo al dominio {{ realm }}!"

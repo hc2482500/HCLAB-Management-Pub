@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    volumes:
+      - ./data:/app/data
+    extra_hosts:
+      - "homepage.hcro04.lan:192.168.1.6"
+      - "monitor.hcro04.lan:192.168.1.6"
+      - "pbs.hcro04.lan:192.168.1.6"
+      - "pve.hcro04.lan:192.168.1.6"

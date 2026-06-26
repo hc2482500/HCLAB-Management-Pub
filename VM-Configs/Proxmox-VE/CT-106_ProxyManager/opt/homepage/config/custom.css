@@ -1,0 +1,19 @@
+/* /opt/homepage/config/custom.css */
+
+/* Rimuove animazioni inutili che possono pesare sui client vecchi */
+* {
+    transition: none !important;
+}
+
+/* Card semi-trasparenti: leggerissime per il browser */
+.card {
+    background-color: rgba(20, 20, 20, 0.7) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+/* Rende il testo molto leggibile senza icone pesanti */
+.text-xs {
+    font-size: 0.75rem;
+    color: #a0a0a0;
+}

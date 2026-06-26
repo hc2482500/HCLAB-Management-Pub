@@ -1,0 +1,14 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: always
+    environment:
+      - WEBSOCKET_ENABLED=true # Abilita la sincronizzazione live
+      - DOMAIN=https://vault.hcro04.lan # Il tuo dominio futuro
+      - SIGNUPS_ALLOWED=false # Lasciato a true solo per la prima registrazione
+      - ADMIN_TOKEN: '<REDACTED_ARGON2_ADMIN_TOKEN>'
+    volumes:
+      - ./vw-data:/data
+    ports:
+      - "8082:80"

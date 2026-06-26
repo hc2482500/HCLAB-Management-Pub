@@ -1,0 +1,25 @@
+---
+- name: "Fase 1: Ingegnerizzazione e Predisposizione Domain Controller FreeIPA"
+  hosts: identity_servers
+  gather_facts: true
+
+  tasks:
+    - name: "1. Hardening Hostname: Sanatoria del file /etc/hosts per prevenire crash Apache"
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: "x.x.x.31 hcrocky.hcro04.lan hcrocky"
+        state: present
+
+    - name: "2. Allineamento Sistema: Aggiornamento dei repository DNF core"
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+        update_cache: true
+
+    - name: "3. Deployment Core: Installazione di FreeIPA Server e DNS Bind integrato"
+      ansible.builtin.dnf:
+        name:
+          - freeipa-server
+          - freeipa-server-dns
+          - nano
+        state: present

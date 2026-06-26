@@ -1,0 +1,6 @@
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+# --- BEGIN PVE ---
+x.x.1.2 hcrocky.hcro04.lan hcrocky
+# --- END PVE ---
+x.x.79.31 hcrocky.hcro04.lan hcrocky

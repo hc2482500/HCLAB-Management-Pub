@@ -1,0 +1,24 @@
+---
+# /opt/homepage/config/settings.yaml
+layout:
+  # Ottimizzazione per non sovraccaricare il rendering
+  columnWidth: 5
+  header: true
+  
+# Aumentiamo il tempo di aggiornamento dei dati (in millisecondi)
+# 60000ms = 60 secondi. Molto più leggero dei 5-10 secondi standard.
+refresh: 60000
+
+# settings.yaml
+title: "HCPRX01 Datacenter"
+theme: dark
+color: slate
+
+# --- Sicurezza ---
+allowedHosts:
+  - 192.168.79.166:8085
+  - 192.168.1.6:8085
+  - 192.168.79.166:3000
+  - 192.168.1.6:3000
+  - localhost:8085
+  - homepage.hcro04.lan

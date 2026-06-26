@@ -1,0 +1,47 @@
+- Infrastruttura Core:
+    - Proxmox VE:
+        icon: proxmox
+        href: https://192.168.79.100:8006/
+        description: Hypervisor Nodo PVE
+        widget:
+          type: proxmox
+          url: https://192.168.79.100:8006
+          username: api-homepage@pve!homepage
+          password: passwordproxmox
+          # Forza l'uso dell'ID esatto presente nel JSON
+          node: pve
+          # Disabilita il raggruppamento
+          group: "" 
+          showVms: true
+          showLxc: true
+          
+    - pfSense:
+        icon: pfsense
+        href: https://firewall.hcro04.lan/
+        description: Firewall & Router
+
+- Gestione Traffico & Sicurezza:
+    - Nginx Proxy Manager:
+        icon: nginx-proxy-manager
+        href: http://npm.hcro04.lan
+        description: Reverse Proxy & Certificati SSL
+    - GoAccess Dashboard:
+        icon: goaccess
+        href: http://monitor.hcro04.lan/
+        description: Analisi Log Web in Tempo Reale
+    - Vaultwarden:
+        icon: vaultwarden
+        href: https://vault.hcro04.lan/
+        description: Gestione credenziali e passwords
+
+- Monitoraggio:
+    - Uptime Kuma:
+        icon: uptime-kuma
+        href: https://kuma.hcro04.lan/
+        description: Monitoraggio dello Stato dei Servizi
+
+- Backup:
+    - Proxmox Backup:
+        icon: proxmox
+        href: https://pbs.hcro04.lan/
+        description: Servizio di Backup

@@ -1,0 +1,41 @@
+services:
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: crowdsec
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - COLLECTIONS=crowdsecurity/nginx-proxy-manager crowdsecurity/sshd
+      - GID=0
+      - TZ=Europe/Rome
+    volumes:
+      - /var/log/auth.log:/var/log/auth.log:ro
+      - ../nginx-proxy-manager/data/logs:/var/log/nginx:ro
+      - crowdsec-db:/var/lib/crowdsec/data
+      - crowdsec-config:/etc/crowdsec
+    deploy:
+      resources:
+        limits:
+          cpus: '0.20'
+          memory: 150M
+
+  goaccess:
+    image: xavierh/goaccess-for-nginxproxymanager:latest
+    container_name: goaccess
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Rome
+    ports:
+      - "7880:7880"
+    volumes:
+      - ../nginx-proxy-manager/data/logs:/opt/log:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '0.20'
+          memory: 50M
+
+volumes:
+  crowdsec-db:
+  crowdsec-config:
