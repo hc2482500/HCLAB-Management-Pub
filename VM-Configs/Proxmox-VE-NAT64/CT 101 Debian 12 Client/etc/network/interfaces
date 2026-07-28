@@ -1,0 +1,8 @@
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet6 static
+	address <TUO_IPV6_STATICO_ULA>/64
+	gateway <IPV6_ROUTER_OPENWRT>
+

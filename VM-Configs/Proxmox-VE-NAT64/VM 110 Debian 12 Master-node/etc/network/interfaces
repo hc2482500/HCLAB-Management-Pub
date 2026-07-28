@@ -1,0 +1,10 @@
+# This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+
+source /etc/network/interfaces.d/*
+
+# The loopback network interface
+allow-hotplug ens18
+iface ens18 inet6 static
+	address <TUO_IPV6_STATICO_ULA>/64
+	gateway <IPV6_ROUTER_OPENWRT>

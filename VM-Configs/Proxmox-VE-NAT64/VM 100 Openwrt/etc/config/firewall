@@ -1,0 +1,46 @@
+
+config defaults
+	option input 'ACCEPT'
+	option output 'ACCEPT'
+	option forward 'ACCEPT'
+
+config zone
+	option name 'lan'
+	list network 'lan'
+	list network 'wan'
+	option input 'ACCEPT'
+	option output 'ACCEPT'
+	option forward 'ACCEPT'
+
+config zone
+	option name 'wan'
+	list network 'wan'
+	option input 'ACCEPT'
+	option output 'ACCEPT'
+	option forward 'ACCEPT'
+	option masq '1'
+
+config rule
+	option name 'Allow-SSH-WAN'
+	option src 'wan'
+	option dest_port '22'
+	option proto 'tcp'
+	option target 'ACCEPT'
+
+config rule
+	option name 'Allow-HTTP-WAN'
+	option src 'wan'
+	option dest_port '80'
+	option proto 'tcp'
+	option target 'ACCEPT'
+
+config redirect
+	option dest 'lan'
+	option target 'DNAT'
+	option name 'SSH_Worker1'
+	list proto 'tcp'
+	option src 'wan'
+	option src_dport '2211'
+	option dest_ip 'IPV6-VM-111'
+	option dest_port '22'
+

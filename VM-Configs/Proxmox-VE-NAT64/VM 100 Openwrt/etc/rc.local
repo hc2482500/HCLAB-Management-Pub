@@ -1,0 +1,21 @@
+# Metti in pausa lo script finché la WAN non riceve l'IP
+while ! ip -4 addr show dev eth0 | grep -q inet; do
+    sleep 2
+done
+
+# Inizializza il prefisso NAT64 (ignora l'errore se già avviato dal sistema)
+jool instance add default --netfilter --pool6 64:ff9b::/96 2>/dev/null || true
+
+# Assegna l'IP WAN .x per il pannello di amministrazione NPM
+jool pool4 add <IPV4_OPENWRT> 8000-8500 --tcp
+jool pool4 add <IP_WAN_ALIAS> 8000-8500 --udp
+
+# Assegna il nuovo IP Alias .179 per il traffico Web standard (Enterprise)
+jool pool4 add <IP_WAN_ALIAS> 80-500 --tcp
+
+# Ricrea le tabelle BIB per Nginx Proxy Manager (NPM) su Debian CT 101
+jool bib add <IPV4_OPENWRT>#8181 <IPV6_CT_101>#81 --tcp
+jool bib add <IP_WAN_ALIAS>#80 <IPV6_CT_101>#80 --tcp
+jool bib add <IP_WAN_ALIAS>#443 <IPV6_CT_101>#443 --tcp
+
+exit 0

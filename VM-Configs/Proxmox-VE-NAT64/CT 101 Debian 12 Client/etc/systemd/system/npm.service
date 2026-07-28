@@ -1,0 +1,16 @@
+[Unit]
+Description=Nginx Proxy Manager (Podman Host Network IPv6-Native)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Restart=always
+TimeoutStartSec=60
+ExecStartPre=-/usr/bin/podman stop -t 10 npm
+ExecStartPre=-/usr/bin/podman rm npm
+# Avvio in modalità host per agganciarsi direttamente all'IP <IPV6_CT_DEBIAN_101>
+ExecStart=/usr/bin/podman run --name npm --network host -v /root/npm/data:/data -v /root/npm/letsencrypt:/etc/letsencrypt docker.io/jc21/nginx-proxy-manager:latest
+ExecStop=/usr/bin/podman stop -t 10 npm
+
+[Install]
+WantedBy=multi-user.target

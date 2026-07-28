@@ -1,0 +1,3 @@
+# SANIFICATO (hosts.example)
+<IP_WAN_OPENWRT>    router.azienda.lab
+<IP_WAN_ALIAS>      proxy.azienda.lab, portainer.azienda.lab, app.azienda.lab, sito.azienda.lab

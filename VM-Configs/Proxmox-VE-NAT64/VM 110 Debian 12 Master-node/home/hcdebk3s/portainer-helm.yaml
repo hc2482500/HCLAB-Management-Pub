@@ -1,0 +1,11 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: portainer
+  namespace: kube-system
+spec:
+  chart: portainer
+  repo: https://portainer.github.io/k8s/
+  targetNamespace: portainer
+  set:
+    service.type: NodePort

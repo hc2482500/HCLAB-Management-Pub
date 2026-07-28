@@ -1,0 +1,5 @@
+# SANIFICATO (ssh_config.example)
+Host k3s-node
+    HostName <IPV6_NODO_K3S>
+    User <UTENTE_VM>
+    ProxyJump root@<IP_WAN_OPENWRT>
