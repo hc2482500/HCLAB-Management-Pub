@@ -1,7 +1,9 @@
 🌐 Enterprise IPv6-Only Cloud Lab & NAT64 Transition
+
 Questo repository documenta l'architettura, i manifesti e gli script di configurazione di un laboratorio di rete Cloud Native avanzato. L'obiettivo del progetto è la realizzazione di un'infrastruttura 100% IPv6-Only[cite: 7, 8], capace di esporre servizi applicativi orchestrati verso il mondo esterno (IPv4) tramite tecnologie di transizione all'avanguardia come NAT64 e DNS64.
 
 🏗️ Architettura e Flusso del Traffico (Ingress L3/L7)
+
 Il traffico di rete attraversa molteplici livelli di traduzione e proxying per garantire la compatibilità tra client legacy (IPv4) e workload Cloud Native (IPv6):
 
 Client (IPv4): Invia una richiesta HTTP/HTTPS[cite: 7].
@@ -13,6 +15,7 @@ Reverse Proxy (NPM su LXC): Un container LXC Debian ospita Nginx Proxy Manager i
 Kubernetes (K3s): Il traffico raggiunge il Control Plane o i Worker Node (IPv6 nativo), atterrando sui Pod applicativi (es. WordPress o Portainer)[cite: 7, 8].
 
 🛠️ Stack Tecnologico
+
 Hypervisor Layer: Proxmox VE nidificato su VMware Workstation (con ottimizzazione MAC Spoofing e Offloading disabilitato)[cite: 7, 8].
 
 Core Networking & Traduzione: OpenWrt (x86-64)[cite: 7, 8].
@@ -30,6 +33,7 @@ Linux Containers (LXC) per carichi di rete critici e diretti[cite: 8].
 Gestione Ingress & GUI: Nginx Proxy Manager (Reverse Proxy L7), Portainer CE (Helm Deployment)[cite: 7, 8].
 
 💡 Key Engineering Challenges & Soluzioni
+
 Questo laboratorio ha richiesto un troubleshooting sistemistico e di rete di altissimo livello, documentato nei file di configurazione presenti:
 
 Bypass del Routing Asimmetrico (SSH ProxyJump): Per amministrare i nodi isolati IPv6 da un host Windows IPv4, è stato implementato un Bastion Host su OpenWrt sfruttando la direttiva ProxyJump di OpenSSH, garantendo un accesso Passwordless trasparente tramite chiavi Ed25519[cite: 7, 8].
@@ -41,4 +45,5 @@ Automazione Jool e Race Conditions: Per garantire la resilienza del motore NAT64
 WordPress IPv6 Ingress Routing: Le variabili d'ambiente di WordPress (WP_HOME, WP_SITEURL) sono state iniettate direttamente nei manifesti YAML per prevenire loop di redirect HTTP 302 dietro il reverse proxy[cite: 8].
 
 ⚠️ Note sulla Sicurezza e Sanitizzazione
+
 Tutti i manifesti e gli script in questo repository sono stati sanitizzati. Indirizzi IP reali, subnet ULA di laboratorio, chiavi pubbliche/private, token di setup e credenziali dei database sono stati sostituiti con dei segnaposto (es. <REDACTED>)[cite: 7, 8].
