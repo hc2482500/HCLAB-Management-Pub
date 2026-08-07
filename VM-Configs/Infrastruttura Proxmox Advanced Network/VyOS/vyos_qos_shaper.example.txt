@@ -1,0 +1,16 @@
+# Configurazione Quality of Service (QoS) e Traffic Shaping su VyOS
+# Simulazione di un link WAN satellitare/congestionato a 10 Mbps
+
+# Definizione della policy e del cap globale (10 Mbps)
+set qos policy shaper WAN-QOS bandwidth '10mbit'
+
+# Classe Default: Best Effort (Dati/Generico cappato a 8 Mbps)
+set qos policy shaper WAN-QOS default bandwidth '8mbit'
+
+# Classe 10: Alta Priorità (Traffico di Controllo/Voice garantito a 2 Mbps)
+set qos policy shaper WAN-QOS class 10 bandwidth '2mbit'
+set qos policy shaper WAN-QOS class 10 priority '7'
+set qos policy shaper WAN-QOS class 10 match ICMP ip protocol 'icmp'
+
+# Applicazione della policy in uscita sull'interfaccia di transito
+set qos interface eth0 egress 'WAN-QOS'

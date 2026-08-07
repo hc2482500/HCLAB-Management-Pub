@@ -1,0 +1,24 @@
+# Configurazione di Rete Host Proxmox VE (Sanificata)
+# Dimostrazione di isolamento Layer 2 tramite Linux Bridge VLAN-aware
+
+auto lo
+iface lo inet loopback
+
+# Interfaccia di Management (Collegata alla rete fisica / WAN del lab)
+auto vmbr0
+iface vmbr0 inet static
+    address <IP_WAN_PROXMOX>/24
+    gateway <IP_GATEWAY_FISICO>
+    bridge-ports eth0
+    bridge-stp off
+    bridge-fd 0
+
+# Switch Virtuale Isolato per il Laboratorio (Nessun Uplink fisico)
+auto vmbr1
+iface vmbr1 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+    bridge-vlan-aware yes
+    bridge-vids 2-4094
+    # Questo bridge gestisce le VLAN 10, 20, 30, 100 e 200 per l'infrastruttura simulata
