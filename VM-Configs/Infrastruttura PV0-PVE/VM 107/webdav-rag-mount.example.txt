@@ -1,0 +1,6 @@
+# Contenuto di /etc/davfs2/secrets (Sanitizzato)
+# Autenticazione WebDAV verso l'archivio Nextcloud
+http://10.250.250.108:8080/remote.php/dav/files/nc01/ nc01 <INSERIRE_APP_PASSWORD_NEXTCLOUD>
+
+# Contenuto aggiunto in /etc/fstab per il montaggio persistente
+http://10.250.250.108:8080/remote.php/dav/files/nc01/ /mnt/nextcloud_rag davfs user,rw,_netdev,auto 0 0

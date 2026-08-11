@@ -1,0 +1,4 @@
+# /etc/crontab (Host OS)
+# Esecuzione asincrona dei task di Nextcloud (es. pipeline RAG Assistant)
+# delegata al cron di sistema per aggirare i timeout del web server Nginx.
+*/5 * * * * root docker exec -u www-data nextcloud_app php cron.php
